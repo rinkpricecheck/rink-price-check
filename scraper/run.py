@@ -172,6 +172,12 @@ def main():
             else:
                 status[n] = {"fresh": False, "count": old, "got": len(items),
                              "note": "kept previous listings (store blocked or returned too few items)"}
+    # a skate whose size lookup failed this time keeps the sizes from the last run
+    old_size = {d["url"]: d["size"] for d in prev if d.get("size") and is_skate(d)}
+    for items in fresh.values():
+        for d in items:
+            if not d.get("size") and d["url"] in old_size and is_skate(d):
+                d["size"] = old_size[d["url"]]
     out, seen = [], set()
     for n, items in fresh.items():
         for d in items:
