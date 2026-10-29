@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rink Price Check</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: deals catalog — rink-board masthead, a category + filter sidebar on the left (drawer on phones), and a card grid of live deals. */
+:root{
+  --ice:#f2f6f9; --board:#ffffff; --ink:#122130; --muted:#5a6b7b; --line:#d6e0e8;
+  --red:#c8102e; --blue:#1f4fa8; --good:#137a43; --good-bg:#e3f4ea; --chip:#e8eef4; --thumb:#e6eef5; --on-accent:#ffffff;
+  --display:"Saira Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ice:#0d1620; --board:#15212d; --ink:#e6eef5; --muted:#93a4b4; --line:#273746;
+  --red:#ff5a6e; --blue:#7aa4f0; --good:#5fd394; --good-bg:#16352a; --chip:#1e2d3b; --thumb:#1b2a38; --on-accent:#0d1620; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ice:#0d1620; --board:#15212d; --ink:#e6eef5; --muted:#93a4b4; --line:#273746;
+  --red:#ff5a6e; --blue:#7aa4f0; --good:#5fd394; --good-bg:#16352a; --chip:#1e2d3b; --thumb:#1b2a38; --on-accent:#0d1620; color-scheme:dark}
+
+body{background:var(--ice);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.inner{max-width:1240px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);font-weight:800;line-height:1.05;margin:0;letter-spacing:.01em;text-wrap:balance}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+/* masthead */
+.mast{background:var(--board);border-bottom:6px solid var(--red);padding-block:18px 16px}
+.mast .top{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:flex-end;justify-content:space-between}
+h1{font-size:clamp(2rem,5vw,2.8rem);text-transform:uppercase}
+h1 span{color:var(--red)}
+.stamp{font-size:.85rem;color:var(--muted)}
+.stamp b{color:var(--ink);font-weight:600}
+.cats{display:grid;gap:2px}
+.catbtn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;border-radius:0 6px 6px 0;padding:6px 8px;font-family:var(--display);font-weight:600;font-size:1.05rem;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);cursor:pointer}
+.catbtn:hover{background:var(--chip)}
+.catbtn[aria-pressed="true"]{border-left-color:var(--blue);background:var(--chip);color:var(--blue)}
+.catbtn .n{margin-left:auto;font-family:var(--mono);font-size:.75rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.catbtn.zero{opacity:.45}
+
+/* layout */
+.main{display:grid;grid-template-columns:250px minmax(0,1fr);gap:24px;padding-block:22px 48px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+
+/* sidebar */
+.side{background:var(--board);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:18px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:860px){.side{position:static;max-height:none}.side.closed{display:none}}
+.fgroup{display:grid;gap:8px}
+.fhead{font-size:.74rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+.checks{display:grid;gap:4px}
+.checks label{display:flex;align-items:center;gap:8px;font-size:.92rem;cursor:pointer;padding:2px 0}
+.checks label .n{margin-left:auto;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.checks input{accent-color:var(--blue);width:16px;height:16px;margin:0}
+.checks label.zero{opacity:.45}
+.more{background:none;border:0;color:var(--blue);font-size:.85rem;padding:0;cursor:pointer;justify-self:start}
+.range{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center}
+.range input,.side select,.searchbox{background:var(--ice);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;box-sizing:border-box;min-width:0}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.szgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.szbtn{border:1px solid var(--line);background:var(--chip);border-radius:6px;padding:5px 0;font-family:var(--mono);font-size:.8rem;cursor:pointer;text-align:center;color:var(--ink)}
+.szbtn[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:var(--on-accent)}
+.szbtn:disabled{opacity:.35;cursor:default}
+.sznote{font-size:.75rem;color:var(--muted);margin:0;line-height:1.35}
+.pill{border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:4px 11px;font-size:.85rem;cursor:pointer}
+.pill[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:var(--on-accent)}
+.clear{background:none;border:1px solid var(--line);border-radius:6px;padding:8px;color:var(--muted);cursor:pointer}
+.clear:hover{color:var(--red);border-color:var(--red)}
+
+/* toolbar */
+.results{display:grid;gap:14px;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar .searchbox{flex:1 1 220px;background:var(--board)}
+.toolbar select{background:var(--board);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.count{font-size:.9rem;color:var(--muted)}
+.count b{color:var(--ink);font-family:var(--mono)}
+.tbtn{background:var(--board);border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.tbtn[aria-pressed="true"]{border-color:var(--red);color:var(--red)}
+.only-phone{display:none}
+@media (max-width:860px){.only-phone{display:inline-flex}}
+.active{display:flex;flex-wrap:wrap;gap:6px}
+.active button{background:var(--chip);border:0;border-radius:999px;padding:3px 10px;font-size:.8rem;cursor:pointer;color:var(--ink)}
+.active button::after{content:" ✕";color:var(--muted)}
+
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px}
+.grid.list{grid-template-columns:minmax(0,1fr)}
+.card{background:var(--board);border:1px solid var(--line);border-radius:10px;display:grid;grid-template-rows:auto 1fr;overflow:hidden;min-width:0;transition:border-color .15s}
+.card:hover{border-color:var(--blue)}
+.thumb{background:var(--thumb);aspect-ratio:16/9;max-width:100%;display:grid;place-items:center;position:relative;color:var(--blue)}
+.thumb svg{width:44%;height:auto;max-height:80%}
+.off{position:absolute;top:10px;left:10px;background:var(--red);color:var(--on-accent);font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:.02em;border-radius:5px;padding:1px 8px}
+.cond{position:absolute;bottom:8px;left:10px;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:2px 7px;background:var(--board);color:var(--ink);border:1px solid var(--line)}
+.cond.c-Used{color:var(--red);border-color:var(--red)}
+.cond.c-Refurbished,.cond.c-Prostock{color:var(--blue);border-color:var(--blue)}
+.size{font-size:.8rem;color:var(--muted)}
+.size b{color:var(--ink);font-weight:600}
+.fav{position:absolute;top:6px;right:6px;width:36px;height:36px;border-radius:50%;border:0;background:var(--board);color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;display:grid;place-items:center}
+.fav[aria-pressed="true"]{color:var(--red)}
+.body{padding:12px 14px 14px;display:grid;gap:6px;align-content:start}
+.body h3{font-family:var(--body);font-weight:600;font-size:.98rem;line-height:1.3;text-wrap:pretty}
+.sub{font-size:.8rem;color:var(--muted)}
+.prices{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:2px}
+.now{font-family:var(--mono);font-weight:600;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.was{font-family:var(--mono);font-size:.85rem;color:var(--muted);text-decoration:line-through}
+.save{font-size:.8rem;color:var(--good);font-weight:600}
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.best{font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--good-bg);color:var(--good);border-radius:4px;padding:2px 7px}
+.alt{font-size:.8rem;color:var(--muted)}
+.alt a{color:var(--blue)}
+.go{margin-top:6px;display:block;text-align:center;text-decoration:none;background:var(--blue);color:var(--on-accent);font-weight:600;font-size:.88rem;border-radius:6px;padding:8px 10px}
+.go:hover{filter:brightness(1.08)}
+.grid.list .card{grid-template-columns:150px minmax(0,1fr);grid-template-rows:none}
+.grid.list .thumb{aspect-ratio:auto;height:100%;min-height:110px}
+.grid.list .body{grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:16px}
+.grid.list .body > *{grid-column:1}
+.grid.list .go{grid-column:2;grid-row:1/span 5;margin:0;padding-inline:16px}
+@media (max-width:560px){.grid.list .card{grid-template-columns:96px minmax(0,1fr)}.grid.list .body{grid-template-columns:minmax(0,1fr)}.grid.list .go{grid-column:1;grid-row:auto}}
+@media (max-width:560px){.grid:not(.list){grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.grid:not(.list) .body{padding:10px}.grid:not(.list) .body h3{font-size:.88rem}.grid:not(.list) .now{font-size:1.1rem}.grid:not(.list) .go{font-size:.8rem;padding:7px 6px}}
+.empty{border:2px dashed var(--line);border-radius:10px;padding:28px;color:var(--muted);text-align:center;grid-column:1/-1}
+.pager{display:flex;justify-content:center}
+.pager button{background:var(--board);border:1px solid var(--line);border-radius:6px;padding:10px 20px;cursor:pointer;font-weight:600}
+footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);padding-block:16px 32px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="mast gut">
+  <div class="inner">
+    <div class="top">
+      <h1>Rink <span>Price</span> Check</h1>
+      <div class="stamp" id="stamp">Loading deals…</div>
+    </div>
+  </div>
+</header>
+
+<div class="gut">
+  <div class="inner main">
+    <aside class="side closed" id="side" aria-label="Filters">
+      <nav class="fgroup" aria-label="Gear categories"><div class="fhead">Category</div><div class="cats" id="tabs"></div></nav>
+      <div class="fgroup">
+        <div class="fhead">Show</div>
+        <div class="pills">
+          <button class="pill" id="onSale" aria-pressed="false" type="button">On sale only</button>
+          <button class="pill" id="favOnly" aria-pressed="false" type="button">♥ Favorites</button>
+        </div>
+      </div>
+      <div class="fgroup"><div class="fhead">Condition</div><div class="checks" id="f-cond"></div></div>
+      <div class="fgroup" id="g-sub"><div class="fhead" id="h-sub">Piece</div><div class="checks" id="f-sub"></div></div>
+      <div class="fgroup"><div class="fhead">Size class</div><div class="checks" id="f-level"></div></div>
+      <div class="fgroup" id="g-ssz" hidden><div class="fhead">Skate size</div><div class="szgrid" id="f-ssz"></div><p class="sznote" id="n-ssz"></p></div>
+      <div class="fgroup"><div class="fhead">Brand</div><div class="checks" id="f-brand"></div></div>
+      <div class="fgroup" id="g-line"><div class="fhead">Model line</div><div class="checks" id="f-line"></div></div>
+      <div class="fgroup"><div class="fhead">Discount</div>
+        <div class="pills" id="f-off"></div>
+      </div>
+      <div class="fgroup"><div class="fhead">Price ($)</div>
+        <div class="range"><input id="pmin" inputmode="numeric" placeholder="Min" aria-label="Minimum price"><span>–</span><input id="pmax" inputmode="numeric" placeholder="Max" aria-label="Maximum price"></div>
+      </div>
+      <div class="fgroup"><div class="fhead">Ice or roller</div><div class="checks" id="f-play"></div></div>
+      <div class="fgroup"><div class="fhead">Store</div><div class="checks" id="f-store"></div></div>
+      <button class="clear" id="clearAll" type="button">Clear all filters</button>
+      <button class="go only-phone" id="showResults" type="button" style="border:0;cursor:pointer;justify-content:center">Show results</button>
+    </aside>
+
+    <section class="results" aria-label="Deals">
+      <div class="toolbar">
+        <button class="tbtn only-phone" id="filtersBtn" type="button" aria-controls="side" aria-expanded="false">Filters</button>
+        <input class="searchbox" id="q" type="search" placeholder="Search models, e.g. Tacks XF, HZRDUS, Covert" aria-label="Search deals">
+        <select id="sort" aria-label="Sort">
+          <option value="low" selected>Lowest price</option>
+          <option value="off">Biggest discount</option>
+          <option value="save">Most $ saved</option>
+          <option value="high">Highest price</option>
+          <option value="name">Name A–Z</option>
+        </select>
+        <button class="tbtn" id="viewBtn" type="button" aria-pressed="false" aria-label="Switch to list view">☰ List</button>
+      </div>
+      <div class="toolbar"><span class="count" id="count"></span><div class="active" id="active"></div></div>
+      <div class="grid" id="grid"></div>
+      <div class="pager"><button id="moreBtn" type="button" hidden>Show more deals</button></div>
+    </section>
+  </div>
+</div>
+
+<footer class="gut"><div class="inner">Prices come from each store's clearance and sale pages and can change at any time. Sizes and colors vary by listing, so check availability and the final price on the store's site. Rink Price Check isn't affiliated with any store or brand.</div></footer>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const CATS=["All","Skates","Sticks","Gloves","Helmets","Pants","Shoulder pads","Elbow pads","Shin guards","Goalie","Bags","Accessories"];
+  const LEVELS=["Senior","Intermediate","Junior","Youth"];
+  const OFFS=[0,20,30,40,50,60];
+  const PAGE=48;
+
+  // simple line pictograms, stroke = currentColor
+  const P={
+    Skates:'<path d="M14 8h18l4 20h18c4 0 6 3 6 6v4H12z"/><path d="M8 48h56M14 42v6M56 42v6"/><path d="M20 16h10M21 22h10"/>',
+    Sticks:'<path d="M50 6 26 50"/><path d="M26 50c-2 4-6 6-12 6H6v-4c0-2 2-3 4-3h14"/><path d="M44 18l6 3"/>',
+    Gloves:'<path d="M18 58V30c0-3 2-5 5-5v-12c0-3 4-3 4 0v10-14c0-3 4-3 4 0v14-15c0-3 4-3 4 0v15-12c0-3 4-3 4 0v20l5-5c2-2 5 0 4 2l-8 14v18z"/><path d="M18 50h22"/>',
+    Helmets:'<path d="M10 40c0-16 10-28 26-28s26 10 26 24v6H44l-4-10H22l-4 12h-8z"/><path d="M30 20h14M44 42v8M22 46h22"/>',
+    Pants:'<path d="M14 10h44l4 36H44l-8-18-8 18H10z"/><path d="M14 18h44"/>',
+    "Shoulder pads":'<path d="M8 30c4-12 14-18 28-18s24 6 28 18l-8 6-6-8v24H22V28l-6 8z"/><path d="M28 12v14h16V12"/>',
+    "Elbow pads":'<path d="M24 6h20v18c0 6 6 8 6 16s-6 18-16 18-16-8-16-18 6-10 6-16z"/><circle cx="34" cy="40" r="6"/>',
+    "Shin guards":'<path d="M24 6h24v14c0 4-4 6-4 10v26H28V30c0-4-4-6-4-10z"/><path d="M28 36h16M28 44h16"/><circle cx="36" cy="16" r="5"/>',
+    Goalie:'<rect x="10" y="8" width="20" height="50" rx="4"/><rect x="42" y="8" width="20" height="50" rx="4"/><path d="M10 22h20M10 36h20M42 22h20M42 36h20"/>',
+    Bags:'<rect x="6" y="22" width="60" height="30" rx="6"/><path d="M26 22v-6c0-2 2-4 4-4h12c2 0 4 2 4 4v6M6 34h60"/>',
+    Accessories:'<ellipse cx="36" cy="28" rx="22" ry="8"/><path d="M14 28v10c0 4 10 8 22 8s22-4 22-8V28"/>'
+  };
+  const icon=c=>`<svg viewBox="0 0 72 64" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[c]||P.Accessories}</svg>`;
+
+  const FACETS=["cond","sub","level","line","brand","play","store"];
+  const CONDS=["New","Used","Refurbished","Pro stock"];
+  const CONDLABEL={"Pro stock":"Pro stock / pro return"};
+  const SUBLABEL={Goalie:"Goalie piece",Accessories:"Accessory type",Skates:"Skate type",Sticks:"Blade finish",Helmets:"Helmet style",Pants:"Pant type"};
+  const S={cat:"All",ssz:new Set(),cond:new Set(),sub:new Set(),level:new Set(),line:new Set(),brand:new Set(),play:new Set(),store:new Set(),minOff:0,pmin:"",pmax:"",q:"",sort:"low",onSale:false,favOnly:false,list:false,shown:PAGE,open:{}};
+  let deals=[],favs=new Set();
+  try{favs=new Set(JSON.parse(localStorage.getItem("rinkFavs")||"[]"));}catch(e){}
+  try{const v=localStorage.getItem("rinkView");if(v==="list")S.list=true;}catch(e){}
+  const saveFavs=()=>{try{localStorage.setItem("rinkFavs",JSON.stringify([...favs]));}catch(e){}};
+  const money=n=>"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+  const norm=n=>n.toLowerCase().replace(/\b(ice|hockey|composite|grip)\b/g,"").replace(/\bhzrdus (\d)x4?\b/g,"hzrdus $1x").replace(/[^a-z0-9]+/g," ").trim();
+
+  // compare prices only between listings of the same kind (new vs. used/pro stock)
+  function enrich(){
+    const groups=new Map();
+    for(const d of deals){
+      d.key=norm(d.name)+"|"+(d.cond==="New"?"N":"U");
+      d._t=(d.name+" "+d.brand+" "+d.store+" "+(d.size||"")+" "+(d.cond||"")+" "+(d.line||"")).toLowerCase();
+      d.saved=d.was?d.was-d.price:0;
+      let g=groups.get(d.key);if(!g){g=[];groups.set(d.key,g);}g.push(d);
+    }
+    for(const g of groups.values()){
+      if(g.length<2){g[0].others=[];g[0].bestAcross=false;continue;}
+      g.sort((a,b)=>a.price-b.price);
+      for(const d of g){
+        const o=[];let otherStores=0;
+        for(const x of g){if(x.store===d.store)continue;otherStores++;if(o.length<2&&!o.some(y=>y.store===x.store))o.push(x);}
+        d.others=o;
+        const cheapestOther=g.find(x=>x.store!==d.store);
+        d.bestAcross=!!cheapestOther&&d.price<=cheapestOther.price;
+        d.nOther=new Set(g.filter(x=>x.store!==d.store).map(x=>x.store)).size;
+      }
+    }
+  }
+  // skate sizes stated on a listing: "9.5", "10E", "Senior 10.5", "Youth 08.0", "Y12", "W12, W13"
+  function skSizes(d){
+    if(!(d.cat==="Skates"||(d.cat==="Goalie"&&d.sub==="Goalie skates")))return null;
+    const raw=(d.size||"").split(/\s*·\s*/)[0];
+    if(!raw||/several|est\./i.test(raw))return null;
+    const out=new Set();
+    for(const tok of raw.split(/,\s*/)){
+      const m=/^(?:(Y|Youth|Junior|Jr|Intermediate|Int|Senior|Sr|W)\s*)?(\d{1,2}(?:\.\d{1,2})?)(?:\s*[A-Z]{1,3}|\s*Fit\s*\d|\s*Wide|\s*Regular)?$/i.exec(tok.trim());
+      if(!m)continue;
+      let n=parseFloat(m[2]);if(isNaN(n))continue;
+      n=Math.round(n*2)/2;
+      const pre=(m[1]||"").toLowerCase();
+      const youth=pre==="y"||pre==="youth"||(!pre&&d.level==="Youth"&&n>=6);
+      if(youth){if(n>=6&&n<=13.5)out.add("Y"+n);}
+      else if(n>=1&&n<=15)out.add(String(n));
+    }
+    return out.size?[...out]:null;
+  }
+  const SZ_ORDER=[];for(let n=6;n<=13.5;n+=.5)SZ_ORDER.push("Y"+n);for(let n=1;n<=15;n+=.5)SZ_ORDER.push(String(n));
+  function unpack(p){
+    const out=[];
+    for(const r of p.r){
+      const s=p.S[r[5]],suf=r[8];
+      const d={name:r[0],brand:p.B[r[1]],cat:p.C[r[2]],level:p.L[r[3]],play:r[4]?"Roller":"Ice",store:s,price:r[6],url:/^https?:/.test(suf)?suf:p.P[r[5]]+suf,cond:p.K[r[9]],line:p.M[r[11]],sub:p.U[r[12]],id:r[13]};
+      if(r[10])d.size=r[10];
+      d.ssz=skSizes(d);
+      if(r[7]&&r[7]>r[6]){d.was=r[7];d.off=Math.round((1-r[6]/r[7])*100);}
+      if(/^https:\/\//.test(d.url)&&d.price>0)out.push(d);
+    }
+    return out;
+  }
+
+  // base match ignoring one facet (for counts)
+  function match(d,skip){
+    const sk=[].concat(skip||[]);
+    if(!sk.includes("cat")&&S.cat!=="All"&&d.cat!==S.cat)return false;
+    for(const f of FACETS){if(!sk.includes(f)&&S[f].size&&!S[f].has(d[f]||""))return false;}
+    if(!sk.includes("ssz")&&S.ssz.size&&!(d.ssz&&d.ssz.some(x=>S.ssz.has(x))))return false;
+    if(S.minOff&&(d.off||0)<S.minOff)return false;
+    if(S.onSale&&!d.off)return false;
+    if(S.favOnly&&!favs.has(d.id))return false;
+    const mn=parseFloat(S.pmin),mx=parseFloat(S.pmax);
+    if(!isNaN(mn)&&d.price<mn)return false;
+    if(!isNaN(mx)&&d.price>mx)return false;
+    if(qWords.length){for(const w of qWords)if(!d._t.includes(w))return false;}
+    return true;
+  }
+  let qWords=[];
+
+  function drawTabs(){
+    const t=$("#tabs");t.innerHTML="";
+    const cnt={All:0};for(const d of deals){if(match(d,["cat","sub","line"])){cnt.All++;cnt[d.cat]=(cnt[d.cat]||0)+1;}}
+    CATS.forEach(c=>{
+      const n=cnt[c]||0;
+      const b=document.createElement("button");
+      b.className="catbtn"+(n?"":" zero");b.type="button";b.setAttribute("aria-pressed",S.cat===c?"true":"false");
+      b.innerHTML=`<span>${esc(c==="All"?"All gear":c)}</span><span class="n">${n}</span>`;
+      b.onclick=()=>{if(S.cat!==c){S.sub.clear();S.line.clear();S.ssz.clear();}S.cat=c;S.shown=PAGE;draw();};
+      t.appendChild(b);
+    });
+  }
+
+  function checks(el,facet,values,limit,noun){
+    const box=$(el);box.innerHTML="";
+    const counts={};deals.filter(d=>match(d,facet)).forEach(d=>counts[d[facet]]=(counts[d[facet]]||0)+1);
+    const pool=S.cat==="All"?deals:deals.filter(d=>d.cat===S.cat);
+    let vals=values||Object.keys(Object.fromEntries(pool.map(d=>[d[facet],1]))).filter(Boolean).sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b));
+    S[facet].forEach(v=>{if(!vals.includes(v))vals.push(v);});
+    const total=vals.length;
+    const grp=box.closest(".fgroup");if(grp)grp.hidden=total<1;
+    if(limit&&!S.open[facet])vals=vals.filter((v,i)=>i<limit||S[facet].has(v));
+    vals.forEach(v=>{
+      const id="c-"+facet+"-"+v.replace(/\W/g,"");
+      const l=document.createElement("label");if(!counts[v])l.className="zero";
+      l.innerHTML=`<input type="checkbox" id="${id}"${S[facet].has(v)?" checked":""}><span>${esc(CONDLABEL[v]||v)}</span><span class="n">${counts[v]||0}</span>`;
+      l.querySelector("input").onchange=e=>{e.target.checked?S[facet].add(v):S[facet].delete(v);S.shown=PAGE;draw();};
+      box.appendChild(l);
+    });
+    if(limit&&total>limit){
+      const m=document.createElement("button");m.className="more";m.type="button";
+      m.textContent=S.open[facet]?"Show fewer":"Show all "+total+" "+(noun||"options");
+      m.onclick=()=>{S.open[facet]=!S.open[facet];draw();};box.appendChild(m);
+    }
+  }
+
+  function drawOffs(){
+    const box=$("#f-off");box.innerHTML="";
+    OFFS.forEach(o=>{
+      const b=document.createElement("button");b.className="pill";b.type="button";
+      b.textContent=o?o+"%+ off":"Any";b.setAttribute("aria-pressed",S.minOff===o?"true":"false");
+      b.onclick=()=>{S.minOff=o;S.shown=PAGE;draw();};box.appendChild(b);
+    });
+  }
+
+  function drawActive(){
+    const a=$("#active");a.innerHTML="";
+    const add=(label,fn)=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.setAttribute("aria-label","Remove filter "+label);b.onclick=()=>{fn();S.shown=PAGE;draw();};a.appendChild(b);};
+    if(S.cat!=="All")add(S.cat,()=>S.cat="All");
+    FACETS.forEach(f=>S[f].forEach(v=>add(CONDLABEL[v]||v,()=>S[f].delete(v))));
+    S.ssz.forEach(v=>add("Size "+v,()=>S.ssz.delete(v)));
+    if(S.minOff)add(S.minOff+"%+ off",()=>S.minOff=0);
+    if(S.pmin||S.pmax)add("$"+(S.pmin||"0")+"–"+(S.pmax||"any"),()=>{S.pmin=S.pmax="";$("#pmin").value=$("#pmax").value="";});
+    if(S.onSale)add("On sale",()=>{S.onSale=false;});
+    if(S.favOnly)add("Favorites",()=>{S.favOnly=false;});
+    if(S.q)add("“"+S.q+"”",()=>{S.q="";$("#q").value="";});
+  }
+
+  function card(d){
+    const el=document.createElement("article");el.className="card";
+    const others=d.others.slice(0,2).map(o=>`<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.store)} ${money(o.price)}</a>`).join(" · ");
+    el.innerHTML=`
+      <div class="thumb">${icon(d.cat)}${d.off?`<span class="off">-${d.off}%</span>`:""}${d.cond&&d.cond!=="New"?`<span class="cond c-${esc(d.cond.replace(/\W/g,""))}">${esc(d.cond)}</span>`:""}
+        <button class="fav" type="button" aria-pressed="${favs.has(d.id)}" aria-label="${favs.has(d.id)?"Remove from":"Add to"} favorites">${favs.has(d.id)?"♥":"♡"}</button></div>
+      <div class="body">
+        <h3>${esc(d.name)}</h3>
+        <div class="sub">${esc([d.brand,d.level,d.play==="Roller"?"Roller":null,d.store].filter(Boolean).join(" · "))}</div>
+        ${d.size?`<div class="size">Size: <b>${esc(d.size)}</b></div>`:""}
+        <div class="prices"><span class="now">${money(d.price)}</span>${d.was?`<span class="was">${money(d.was)}</span><span class="save">${d.cond&&d.cond!=="New"?money(d.saved)+" below retail":"Save "+money(d.saved)}</span>`:""}</div>
+        ${d.bestAcross?`<div class="badges"><span class="best">Lowest of ${(d.nOther||d.others.length)+1} stores</span></div>`:""}
+        ${others?`<div class="alt">Also at ${others}</div>`:""}
+        <a class="go" href="${esc(d.url)}" target="_blank" rel="noopener">View at ${esc(d.store)} →</a>
+      </div>`;
+    el.querySelector(".fav").onclick=()=>{favs.has(d.id)?favs.delete(d.id):favs.add(d.id);saveFavs();draw();};
+    return el;
+  }
+
+  function drawSizes(){
+    const g=$("#g-ssz"),box=$("#f-ssz");
+    const on=S.cat==="Skates"||(S.cat==="Goalie"&&S.sub.has("Goalie skates"));
+    g.hidden=!on;if(!on){return;}
+    const cnt={};let withSize=0,total=0;
+    for(const d of deals){if(!match(d,"ssz"))continue;total++;if(d.ssz){withSize++;for(const x of d.ssz)cnt[x]=(cnt[x]||0)+1;}}
+    box.innerHTML="";
+    for(const v of SZ_ORDER){
+      if(!cnt[v]&&!S.ssz.has(v))continue;
+      const b=document.createElement("button");b.type="button";b.className="szbtn";b.textContent=v;
+      b.setAttribute("aria-pressed",S.ssz.has(v));b.title=(cnt[v]||0)+" listings";
+      b.onclick=()=>{S.ssz.has(v)?S.ssz.delete(v):S.ssz.add(v);S.shown=PAGE;draw();};
+      box.appendChild(b);
+    }
+    $("#n-ssz").textContent=withSize.toLocaleString()+" of "+total.toLocaleString()+" listings show a size. For new skates, that's the sizes the store had in stock at the last update.";
+  }
+  function draw(){
+    drawTabs();
+    $("#filtersBtn").textContent="Categories & filters"+(S.cat!=="All"?" · "+S.cat:"");
+    $("#showResults").textContent="Show "+deals.filter(d=>match(d)).length+" results";
+    $("#h-sub").textContent=SUBLABEL[S.cat]||"Piece";
+    checks("#f-cond","cond",CONDS);
+    checks("#f-sub","sub");if(S.cat==="All")$("#g-sub").hidden=true;
+    checks("#f-level","level",LEVELS);
+    drawSizes();
+    checks("#f-line","line",null,8,"model lines");
+    checks("#f-brand","brand",null,8,"brands");checks("#f-play","play",["Ice","Roller"]);checks("#f-store","store");drawOffs();drawActive();
+    $("#onSale").setAttribute("aria-pressed",S.onSale);$("#favOnly").setAttribute("aria-pressed",S.favOnly);
+    const list=deals.filter(d=>match(d));
+    const sorts={off:(a,b)=>(b.off||0)-(a.off||0)||a.price-b.price,save:(a,b)=>b.saved-a.saved,low:(a,b)=>a.price-b.price,high:(a,b)=>b.price-a.price,name:(a,b)=>a.name.localeCompare(b.name)};
+    list.sort(sorts[S.sort]);
+    $("#count").innerHTML=`<b>${list.length}</b> of ${deals.length} items · ${list.filter(d=>d.off).length} on sale`;
+    const g=$("#grid");g.className="grid"+(S.list?" list":"");g.innerHTML="";
+    $("#viewBtn").textContent=S.list?"▦ Grid":"☰ List";$("#viewBtn").setAttribute("aria-label",S.list?"Switch to grid view":"Switch to list view");
+    if(!deals.length){g.innerHTML='<div class="empty">No deals loaded yet. The deal list fills in when this page connects to its data.</div>';$("#moreBtn").hidden=true;return;}
+    if(!list.length){g.innerHTML='<div class="empty">No deals match these filters. Remove a filter above to see more.</div>';}
+    list.slice(0,S.shown).forEach(d=>g.appendChild(card(d)));
+    const mb=$("#moreBtn");mb.hidden=list.length<=S.shown;mb.textContent="Show more deals ("+(list.length-S.shown)+" left)";
+  }
+
+  // controls
+  let qTimer=null;
+  $("#q").addEventListener("input",e=>{clearTimeout(qTimer);qTimer=setTimeout(()=>{S.q=e.target.value.trim();qWords=S.q?S.q.toLowerCase().split(/\s+/):[];S.shown=PAGE;draw();},200);});
+  $("#sort").addEventListener("input",e=>{S.sort=e.target.value;draw();});
+  $("#pmin").addEventListener("input",e=>{S.pmin=e.target.value;S.shown=PAGE;draw();});
+  $("#pmax").addEventListener("input",e=>{S.pmax=e.target.value;S.shown=PAGE;draw();});
+  $("#onSale").onclick=()=>{S.onSale=!S.onSale;S.shown=PAGE;draw();};
+  $("#favOnly").onclick=()=>{S.favOnly=!S.favOnly;S.shown=PAGE;draw();};
+  $("#moreBtn").onclick=()=>{S.shown+=PAGE;draw();};
+  $("#viewBtn").onclick=()=>{S.list=!S.list;try{localStorage.setItem("rinkView",S.list?"list":"grid");}catch(e){}draw();};
+  $("#filtersBtn").onclick=()=>{const s=$("#side");const open=s.classList.toggle("closed")===false;$("#filtersBtn").setAttribute("aria-expanded",open);};
+  $("#showResults").onclick=()=>{$("#side").classList.add("closed");$("#filtersBtn").setAttribute("aria-expanded","false");$("#filtersBtn").scrollIntoView({block:"start"});};
+  $("#clearAll").onclick=()=>{FACETS.forEach(f=>S[f].clear());S.ssz.clear();Object.assign(S,{cat:"All",minOff:0,pmin:"",pmax:"",q:"",onSale:false,favOnly:false,shown:PAGE});$("#pmin").value=$("#pmax").value=$("#q").value="";qWords=[];draw();};
+
+  let updatedAt=null,usedState="loading";
+  function stamp(){
+    const stores=new Set(deals.map(d=>d.store)).size;
+    const when=updatedAt?new Date(updatedAt).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+    const extra=usedState==="loading"?" · <i>loading Play It Again Sports used listings…</i>":usedState==="failed"?" · used listings from Play It Again Sports didn't load":"";
+    $("#stamp").innerHTML=`Prices last updated <b>${when}</b> · ${deals.length.toLocaleString()} items · ${stores} stores${extra}`;
+  }
+  function addPack(p,first){
+    if(first)updatedAt=p.u;
+    deals=deals.concat(unpack(p));
+    enrich();stamp();draw();
+  }
+
+  draw();
+  (async()=>{
+    try{
+      const r=await fetch("deals.json",{cache:"no-store"});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      addPack(await r.json(),true);
+    }catch(e){
+      $("#stamp").textContent="Couldn't load the deal list. Reload the page to try again.";
+      $("#grid").innerHTML='<div class="empty">The deal list didn\'t load. Reload the page to try again.</div>';
+      return;
+    }
+    try{
+      const r=await fetch("used-pias.json",{cache:"no-store"});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      const p=await r.json();usedState="done";addPack(p,false);
+    }catch(e){usedState="failed";stamp();}
+  })();
+})();
+</script>
+
+</html>
