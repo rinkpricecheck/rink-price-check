@@ -222,7 +222,7 @@ IW_SKIP = re.compile(r"jersey|sock|apparel|hats|beanie|lifestyle|warm-ups|refere
 
 def icewarehouse():
     base = "https://www.icewarehouse.com"
-    http, out, seen = Http(), [], set()
+    http, out, seen = Http(delay=1.2), [], set()
     home = soup(http.get(base + "/"))
     cats = []
     for a in home.select('a[href*="catpage-"]'):
@@ -424,7 +424,7 @@ def prostock():
                 rrp = card.select_one(".price--rrp, .price--non-sale")
                 was = money(rrp.get_text()) if rrp and rrp.get_text(strip=True) else None
                 rec = dict(store="Pro Stock Hockey", name=name, price=price, was=was if was and was > price else None,
-                           url=url, cond=cond, size="", cat=c)
+                           url=url, cond=cond, size=(re.match(r"Size ([\d.]+)", name) or [None, ""])[1], cat=c)
                 if path in PSH_SUB:
                     rec["sub"] = PSH_SUB[path]
                 if "kids" in path:
