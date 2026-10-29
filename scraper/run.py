@@ -45,7 +45,7 @@ def load_prev(src):
 def is_skate(d):
     n = d["name"].lower()
     return (d.get("cat") == "Skates" or (d.get("cat") in (None, "Goalie") and "skate" in n)) and \
-        not re.search(r"guard|soaker|lace|runner|steel|holder|tongue|insole|bag|sharpen|tile|blade|fender|wheel", n)
+        not re.search(r"guard|soaker|lace|runner|holder|tongue|insole|\bbags?\b|sharpen|tile|fender|wheel|cover|carrying|tightener|tape|towel|insert|footbed", n)
 
 
 def norm_size(tok):
@@ -73,7 +73,7 @@ def add_sizes(store, items):
     f = S.SIZE_FETCHERS.get(store)
     if not f:
         return
-    http = S.Http(delay=0.5)
+    http = S.Http(delay=1.5 if store == "Ice Warehouse" else 0.5)  # Ice Warehouse blocks fast requests
     todo = [d for d in items if is_skate(d)][:450]
     got = 0
     for d in todo:
@@ -102,8 +102,9 @@ def finish(d):
                id=hashlib.md5((key + n + n).encode()).hexdigest()[:10])
     out["sub"] = d.get("sub") or C.sub(n, cat, play)
     if out["store"] != USED_STORE and out["size"] and is_skate(out):
-        s = fmt_sizes(out["size"].split(","), lvl)
-        out["size"] = s
+        s = fmt_sizes(re.split(r",\s*", out["size"]), lvl)
+        if s:
+            out["size"] = s
     return out
 
 
@@ -173,7 +174,10 @@ def main():
                 status[n] = {"fresh": False, "count": old, "got": len(items),
                              "note": "kept previous listings (store blocked or returned too few items)"}
     # a skate whose size lookup failed this time keeps the sizes from the last run
-    old_size = {d["url"]: d["size"] for d in prev if d.get("size") and is_skate(d)}
+    old_size = {}
+    for d in load_prev(os.path.join(os.path.dirname(__file__), "..", "seed")) + prev:  # newer runs override starter data
+        if d.get("size") and is_skate(d):
+            old_size[d["url"]] = d["size"]
     for items in fresh.values():
         for d in items:
             if not d.get("size") and d["url"] in old_size and is_skate(d):
