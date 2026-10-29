@@ -1,0 +1,61 @@
+name: Refresh prices
+
+on:
+  schedule:
+    - cron: "17 */8 * * *"   # every 8 hours (UTC); GitHub may start it a little late
+  workflow_dispatch:         # "Run workflow" button for a manual refresh
+  push:
+    branches: [main]
+    paths: ["docs/**", "scraper/**", ".github/workflows/**"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r scraper/requirements.txt
+
+      - name: Starter data
+        run: if [ -d "seed." ] && [ ! -d seed ]; then cp -r "seed." seed; fi
+
+      - name: Scrape stores
+        run: |
+          python scraper/run.py build \
+            --prev "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+
+      - name: Add the site page
+        run: cp -r docs/. build/
+
+      - name: Store report
+        run: |
+          echo "## Store refresh" >> "$GITHUB_STEP_SUMMARY"
+          python -c "import json;s=json.load(open('build/status.json'));print('| Store | Items | Fresh? | Note |');print('|---|---|---|---|');[print(f\"| {k} | {v['count']} | {'yes' if v['fresh'] else 'no'} | {v.get('note','')} |\") for k,v in sorted(s['stores'].items())]" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
