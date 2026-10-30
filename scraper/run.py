@@ -48,6 +48,20 @@ def is_skate(d):
         not re.search(r"guard|soaker|lace|runner|holder|tongue|insole|\bbags?\b|sharpen|tile|fender|wheel|cover|carrying|tightener|tape|towel|insert|footbed", n)
 
 
+def is_pad(d):
+    return d.get("sub") == "Leg pads" or (d.get("cat") in (None, "Goalie") and
+                                           bool(re.search(r"leg pads?\b", d["name"], re.I)))
+
+
+def fmt_pad_sizes(tokens):
+    out = []
+    for t in tokens:
+        t = re.sub(r"\s*in\.?\s*$", '"', t.strip()).replace("''", '"')
+        if t and t not in out:
+            out.append(t)
+    return ", ".join(out)
+
+
 def norm_size(tok):
     t = tok.strip()
     y = bool(re.search(r"(^|\s)(y|yth|youth)\b|^y\s*\d|\d\s*y\b", t, re.I))
@@ -74,7 +88,7 @@ def add_sizes(store, items):
     if not f:
         return
     http = S.Http(delay=1.5 if store == "Ice Warehouse" else 0.5)  # Ice Warehouse blocks fast requests
-    todo = [d for d in items if is_skate(d)][:450]
+    todo = ([d for d in items if is_skate(d)] + [d for d in items if is_pad(d)])[:600]
     got = 0
     for d in todo:
         try:
@@ -82,8 +96,8 @@ def add_sizes(store, items):
         except Exception as e:
             log.debug("sizes %s: %s", d["url"], e); sz = None
         if sz:
-            d["size"] = fmt_sizes(sz, C.level(d["name"])); got += 1
-    log.info("%s: sizes for %d of %d skates", store, got, len(todo))
+            d["size"] = fmt_pad_sizes(sz) if is_pad(d) else fmt_sizes(sz, C.level(d["name"])); got += 1
+    log.info("%s: sizes for %d of %d skates and goalie pads", store, got, len(todo))
 
 
 # ---------------------------------------------------------------- classify fresh items
@@ -176,11 +190,11 @@ def main():
     # a skate whose size lookup failed this time keeps the sizes from the last run
     old_size = {}
     for d in load_prev(os.path.join(os.path.dirname(__file__), "..", "seed")) + prev:  # newer runs override starter data
-        if d.get("size") and is_skate(d):
+        if d.get("size") and (is_skate(d) or is_pad(d)):
             old_size[d["url"]] = d["size"]
     for items in fresh.values():
         for d in items:
-            if not d.get("size") and d["url"] in old_size and is_skate(d):
+            if not d.get("size") and d["url"] in old_size and (is_skate(d) or is_pad(d)):
                 d["size"] = old_size[d["url"]]
     out, seen = [], set()
     for n, items in fresh.items():
