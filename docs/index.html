@@ -153,6 +153,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
       <div class="fgroup" id="g-sub"><div class="fhead" id="h-sub">Piece</div><div class="checks" id="f-sub"></div></div>
       <div class="fgroup"><div class="fhead">Size class</div><div class="checks" id="f-level"></div></div>
       <div class="fgroup" id="g-ssz" hidden><div class="fhead">Skate size</div><div class="szgrid" id="f-ssz"></div><p class="sznote" id="n-ssz"></p></div>
+      <div class="fgroup" id="g-psz" hidden><div class="fhead">Goalie pad size</div><div class="szgrid" id="f-psz"></div><p class="sznote" id="n-psz"></p></div>
       <div class="fgroup"><div class="fhead">Brand</div><div class="checks" id="f-brand"></div></div>
       <div class="fgroup" id="g-line"><div class="fhead">Model line</div><div class="checks" id="f-line"></div></div>
       <div class="fgroup"><div class="fhead">Discount</div>
@@ -217,7 +218,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
   const CONDS=["New","Used","Refurbished","Pro stock"];
   const CONDLABEL={"Pro stock":"Pro stock / pro return"};
   const SUBLABEL={Goalie:"Goalie piece",Accessories:"Accessory type",Skates:"Skate type",Sticks:"Blade finish",Helmets:"Helmet style",Pants:"Pant type"};
-  const S={cat:"All",ssz:new Set(),cond:new Set(),sub:new Set(),level:new Set(),line:new Set(),brand:new Set(),play:new Set(),store:new Set(),minOff:0,pmin:"",pmax:"",q:"",sort:"low",onSale:false,favOnly:false,list:false,shown:PAGE,open:{}};
+  const S={cat:"All",ssz:new Set(),psz:new Set(),cond:new Set(),sub:new Set(),level:new Set(),line:new Set(),brand:new Set(),play:new Set(),store:new Set(),minOff:0,pmin:"",pmax:"",q:"",sort:"low",onSale:false,favOnly:false,list:false,shown:PAGE,open:{}};
   let deals=[],favs=new Set();
   try{favs=new Set(JSON.parse(localStorage.getItem("rinkFavs")||"[]"));}catch(e){}
   try{const v=localStorage.getItem("rinkView");if(v==="list")S.list=true;}catch(e){}
@@ -266,6 +267,22 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
     }
     return out.size?[...out]:null;
   }
+  // goalie leg pad sizes: 33", 34+2", 35"+1, or Bauer's XS-XL
+  const PAD_LETTERS={XS:"XS",XSM:"XS",S:"S",SM:"S",SML:"S",SMALL:"S",M:"M",MD:"M",MED:"M",MEDIUM:"M",L:"L",LG:"L",LRG:"L",LARGE:"L",XL:"XL",XLG:"XL",XXL:"XXL"};
+  function padSizes(d){
+    if(d.sub!=="Leg pads")return null;
+    const raw=(d.size||"").split(/\s*\u00b7\s*/)[0];
+    const toks=raw?raw.split(/,\s*/):[];
+    const lead=/^(\d{2}(?:\.\d)?)\s*(?:"|''|in\b)/.exec(d.name);if(lead)toks.push(lead[1]+'"');
+    if(!toks.length){const m=/\b(\d{2}(?:\.\d)?)\s*(?:"|''|in\b)\s*(?:\+\s*\d(?:\.\d)?\s*(?:"|in\b)?)?\s*$/.exec(d.name);if(m)toks.push(m[1]+'"');}
+    const out=new Set();
+    for(const t of toks){const s=t.trim();
+      const m=/^(\d{2}(?:\.\d)?)\s*(?:"|''|in\.?)?\s*(?:\+\s*\d(?:\.\d)?\s*(?:"|''|in\.?)?)?$/i.exec(s);
+      if(m){const n=Math.floor(parseFloat(m[1]));if(n>=20&&n<=38)out.add(n+'"');continue;}
+      const L=PAD_LETTERS[s.toUpperCase().replace(/[^A-Z]/g,"")];if(L)out.add(L);}
+    return out.size?[...out]:null;
+  }
+  const PSZ_ORDER=[];for(let n=20;n<=38;n++)PSZ_ORDER.push(n+'"');PSZ_ORDER.push("XS","S","M","L","XL","XXL");
   const SZ_ORDER=[];for(let n=6;n<=13.5;n+=.5)SZ_ORDER.push("Y"+n);for(let n=1;n<=15;n+=.5)SZ_ORDER.push(String(n));
   function unpack(p){
     const out=[];
@@ -273,7 +290,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
       const s=p.S[r[5]],suf=r[8];
       const d={name:r[0],brand:p.B[r[1]],cat:p.C[r[2]],level:p.L[r[3]],play:r[4]?"Roller":"Ice",store:s,price:r[6],url:/^https?:/.test(suf)?suf:p.P[r[5]]+suf,cond:p.K[r[9]],line:p.M[r[11]],sub:p.U[r[12]],id:r[13]};
       if(r[10])d.size=r[10];
-      d.ssz=skSizes(d);
+      d.ssz=skSizes(d);d.psz=padSizes(d);
       if(r[7]&&r[7]>r[6]){d.was=r[7];d.off=Math.round((1-r[6]/r[7])*100);}
       if(/^https:\/\//.test(d.url)&&d.price>0)out.push(d);
     }
@@ -286,6 +303,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
     if(!sk.includes("cat")&&S.cat!=="All"&&d.cat!==S.cat)return false;
     for(const f of FACETS){if(!sk.includes(f)&&S[f].size&&!S[f].has(d[f]||""))return false;}
     if(!sk.includes("ssz")&&S.ssz.size&&!(d.ssz&&d.ssz.some(x=>S.ssz.has(x))))return false;
+    if(!sk.includes("psz")&&S.psz.size&&!(d.psz&&d.psz.some(x=>S.psz.has(x))))return false;
     if(S.minOff&&(d.off||0)<S.minOff)return false;
     if(S.onSale&&!d.off)return false;
     if(S.favOnly&&!favs.has(d.id))return false;
@@ -305,7 +323,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
       const b=document.createElement("button");
       b.className="catbtn"+(n?"":" zero");b.type="button";b.setAttribute("aria-pressed",S.cat===c?"true":"false");
       b.innerHTML=`<span>${esc(c==="All"?"All gear":c)}</span><span class="n">${n}</span>`;
-      b.onclick=()=>{if(S.cat!==c){S.sub.clear();S.line.clear();S.ssz.clear();}S.cat=c;S.shown=PAGE;draw();};
+      b.onclick=()=>{if(S.cat!==c){S.sub.clear();S.line.clear();S.ssz.clear();S.psz.clear();}S.cat=c;S.shown=PAGE;draw();};
       t.appendChild(b);
     });
   }
@@ -348,6 +366,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
     if(S.cat!=="All")add(S.cat,()=>S.cat="All");
     FACETS.forEach(f=>S[f].forEach(v=>add(CONDLABEL[v]||v,()=>S[f].delete(v))));
     S.ssz.forEach(v=>add("Size "+v,()=>S.ssz.delete(v)));
+    S.psz.forEach(v=>add("Pad "+v,()=>S.psz.delete(v)));
     if(S.minOff)add(S.minOff+"%+ off",()=>S.minOff=0);
     if(S.pmin||S.pmax)add("$"+(S.pmin||"0")+"–"+(S.pmax||"any"),()=>{S.pmin=S.pmax="";$("#pmin").value=$("#pmax").value="";});
     if(S.onSale)add("On sale",()=>{S.onSale=false;});
@@ -390,6 +409,22 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
     }
     $("#n-ssz").textContent=withSize.toLocaleString()+" of "+total.toLocaleString()+" listings show a size. For new skates, that's the sizes the store had in stock at the last update.";
   }
+  function drawPadSizes(){
+    const g=$("#g-psz"),box=$("#f-psz");
+    const on=S.cat==="Goalie"&&(!S.sub.size||S.sub.has("Leg pads"));
+    g.hidden=!on;if(!on){if(S.psz.size)S.psz.clear();return;}
+    const cnt={};let withSize=0,total=0;
+    for(const d of deals){if(d.sub!=="Leg pads"||!match(d,"psz"))continue;total++;if(d.psz){withSize++;for(const x of d.psz)cnt[x]=(cnt[x]||0)+1;}}
+    box.innerHTML="";
+    for(const v of PSZ_ORDER){
+      if(!cnt[v]&&!S.psz.has(v))continue;
+      const b=document.createElement("button");b.type="button";b.className="szbtn";b.textContent=v;
+      b.setAttribute("aria-pressed",S.psz.has(v));b.title=(cnt[v]||0)+" listings";
+      b.onclick=()=>{S.psz.has(v)?S.psz.delete(v):S.psz.add(v);S.shown=PAGE;draw();};
+      box.appendChild(b);
+    }
+    $("#n-psz").textContent=withSize.toLocaleString()+" of "+total.toLocaleString()+" leg pads show a size. Inches are the pad length; a +1 or +2 thigh rise counts under the same length. Bauer sizes its newer pads XS\u2013XL.";
+  }
   function draw(){
     drawTabs();
     $("#filtersBtn").textContent="Categories & filters"+(S.cat!=="All"?" · "+S.cat:"");
@@ -398,7 +433,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
     checks("#f-cond","cond",CONDS);
     checks("#f-sub","sub");if(S.cat==="All")$("#g-sub").hidden=true;
     checks("#f-level","level",LEVELS);
-    drawSizes();
+    drawSizes();drawPadSizes();
     checks("#f-line","line",null,8,"model lines");
     checks("#f-brand","brand",null,8,"brands");checks("#f-play","play",["Ice","Roller"]);checks("#f-store","store");drawOffs();drawActive();
     $("#onSale").setAttribute("aria-pressed",S.onSale);$("#favOnly").setAttribute("aria-pressed",S.favOnly);
@@ -426,7 +461,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
   $("#viewBtn").onclick=()=>{S.list=!S.list;try{localStorage.setItem("rinkView",S.list?"list":"grid");}catch(e){}draw();};
   $("#filtersBtn").onclick=()=>{const s=$("#side");const open=s.classList.toggle("closed")===false;$("#filtersBtn").setAttribute("aria-expanded",open);};
   $("#showResults").onclick=()=>{$("#side").classList.add("closed");$("#filtersBtn").setAttribute("aria-expanded","false");$("#filtersBtn").scrollIntoView({block:"start"});};
-  $("#clearAll").onclick=()=>{FACETS.forEach(f=>S[f].clear());S.ssz.clear();Object.assign(S,{cat:"All",minOff:0,pmin:"",pmax:"",q:"",onSale:false,favOnly:false,shown:PAGE});$("#pmin").value=$("#pmax").value=$("#q").value="";qWords=[];draw();};
+  $("#clearAll").onclick=()=>{FACETS.forEach(f=>S[f].clear());S.ssz.clear();S.psz.clear();Object.assign(S,{cat:"All",minOff:0,pmin:"",pmax:"",q:"",onSale:false,favOnly:false,shown:PAGE});$("#pmin").value=$("#pmax").value=$("#q").value="";qWords=[];draw();};
 
   let updatedAt=null,usedState="loading";
   function stamp(){
