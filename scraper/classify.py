@@ -69,6 +69,10 @@ def line(n):
 def sub(name, c, play):
     n = name.lower()
     if c == "Goalie":
+        # most stores say "Goalie Pads" rather than "Leg Pads"
+        if re.search(r"\bpads?\b|pad set", n) and not re.search(
+                r"knee|strap|buckle|\btoe\b|lace|padded|\bbag|cover|chest|\barm|pant|shin|thigh guard|jock|neck", n):
+            return "Leg pads"
         for k, v in [("leg pad", "Leg pads"), ("blocker", "Blocker"), ("catch", "Catch glove"),
                      ("trapper", "Catch glove"), ("glove", "Catch glove"), ("combo", "Full set"),
                      ("skate", "Goalie skates"), ("pant", "Goalie pants"), ("chest", "Chest & arm"),
