@@ -276,7 +276,7 @@ footer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);paddi
     const lead=/^(\d{2}(?:\.\d)?)\s*(?:"|''|in\b)/.exec(d.name);if(lead)toks.push(lead[1]+'"');
     if(!toks.length){const m=/\b(\d{2}(?:\.\d)?)\s*(?:"|''|in\b)\s*(?:\+\s*\d(?:\.\d)?\s*(?:"|in\b)?)?\s*$/.exec(d.name);if(m)toks.push(m[1]+'"');}
     const out=new Set();
-    for(const t of toks){const s=t.trim();
+    for(const t of toks.flatMap(x=>x.split(/\s+\/\s+/))){const s=t.trim().replace(/^(?:senior|intermediate|junior|youth|sr|int|jr|yth)\s+/i,"");
       const m=/^(\d{2}(?:\.\d)?)\s*(?:"|''|in\.?)?\s*(?:\+\s*\d(?:\.\d)?\s*(?:"|''|in\.?)?)?$/i.exec(s);
       if(m){const n=Math.floor(parseFloat(m[1]));if(n>=20&&n<=38)out.add(n+'"');continue;}
       const L=PAD_LETTERS[s.toUpperCase().replace(/[^A-Z]/g,"")];if(L)out.add(L);}
