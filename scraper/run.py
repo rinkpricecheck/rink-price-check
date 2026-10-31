@@ -15,6 +15,16 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("run")
 FILES = ("deals.json", "used-pias.json")
 USED_STORE = "Play It Again Sports"
+CA_PROV = {"AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"}
+
+
+def in_canada(d):
+    """Play It Again Sports location is the last part of the size field ("9 · Whitby, ON") or the URL slug."""
+    m = re.search(r",\s*([A-Z]{2})\s*$", (d.get("size") or "").split(" · ")[-1])
+    if m:
+        return m.group(1) in CA_PROV
+    m = re.search(r"/locations/([a-z0-9-]+)/", d["url"])
+    return bool(m) and any(t.upper() in CA_PROV for t in m.group(1).split("-")[1:])
 
 
 # ---------------------------------------------------------------- previous data
@@ -49,8 +59,10 @@ def is_skate(d):
 
 
 def is_pad(d):
-    return d.get("sub") == "Leg pads" or (d.get("cat") in (None, "Goalie") and
-                                           bool(re.search(r"leg pads?\b", d["name"], re.I)))
+    if d.get("sub"):
+        return d["sub"] == "Leg pads"
+    return d.get("cat") in (None, "Goalie") and "goalie" in d["name"].lower() and \
+        C.sub(d["name"], "Goalie", "Ice") == "Leg pads"
 
 
 def fmt_pad_sizes(tokens):
@@ -196,6 +208,11 @@ def main():
         for d in items:
             if not d.get("size") and d["url"] in old_size and (is_skate(d) or is_pad(d)):
                 d["size"] = old_size[d["url"]]
+    for n in list(fresh):
+        if n == USED_STORE:
+            fresh[n] = [d for d in fresh[n] if not in_canada(d)]  # US stores only, so every price is in US dollars
+    if USED_STORE in by_store:
+        by_store[USED_STORE] = [d for d in by_store[USED_STORE] if not in_canada(d)]
     out, seen = [], set()
     for n, items in fresh.items():
         for d in items:
