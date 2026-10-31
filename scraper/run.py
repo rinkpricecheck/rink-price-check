@@ -127,6 +127,10 @@ def finish(d):
                size=d.get("size") or "", line=C.line(clean),
                id=hashlib.md5((key + n + n).encode()).hexdigest()[:10])
     out["sub"] = d.get("sub") or C.sub(n, cat, play)
+    if out["sub"] == "Leg pads" and not out["level"]:  # pro-stock pads rarely say Senior
+        m = re.search(r"(\d{2}(?:\.\d)?)\s*(?:\"|''|in\b|\+)", out["size"] + " " + clean)
+        if m and float(m.group(1)) >= 32:
+            out["level"] = "Senior"
     if out["store"] != USED_STORE and out["size"] and is_skate(out):
         s = fmt_sizes(re.split(r",\s*", out["size"]), lvl)
         if s:
