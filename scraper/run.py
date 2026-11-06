@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(__file__))
 import classify as C
+import years as Yr
 import stores as S
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -47,7 +48,8 @@ def load_prev(src):
             items.append(dict(name=r[0], brand=p["B"][r[1]], cat=p["C"][r[2]], level=p["L"][r[3]],
                               play="Roller" if r[4] else "Ice", store=p["S"][s], price=r[6], was=r[7] or None,
                               url=suf if re.match(r"https?:", suf) else p["P"][s] + suf, cond=p["K"][r[9]],
-                              size=r[10], line=p["M"][r[11]], sub=p["U"][r[12]], id=r[13], _done=True))
+                              size=r[10], line=p["M"][r[11]], sub=p["U"][r[12]], id=r[13], _done=True,
+                              year=r[14] if len(r) > 14 else ""))
     return items
 
 
@@ -161,7 +163,7 @@ def pack(items, stamp):
         rows.append([d["name"], ix("B", d["brand"]), ix("C", d["cat"]), ix("L", d["level"]),
                      1 if d["play"] == "Roller" else 0, s, round(d["price"], 2), round(d.get("was") or 0, 2), suf,
                      ix("K", d["cond"]), d.get("size", ""), ix("M", d.get("line", "")), ix("U", d.get("sub", "")),
-                     d["id"]])
+                     d["id"], d.get("year", "")])
     out = {"u": stamp}; out.update(dicts); out["P"] = P; out["r"] = rows
     return out
 
@@ -234,6 +236,7 @@ def main():
         status.setdefault(n, {"fresh": False, "count": len(items), "note": "carried over (no scraper)"})
         for d in items:
             d.pop("_done", None); out.append(d)
+    Yr.assign(out)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     os.makedirs(a.out, exist_ok=True)
     main_items = [d for d in out if d["store"] != USED_STORE]
