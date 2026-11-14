@@ -48,10 +48,11 @@ module stick() {
     }
     // shaft (black) + yellow hosel section
     col("black")  slab(SHAFT_T) translate([0, -SHAFT_H/2]) square([SHAFT_L - 70, SHAFT_H]);
-    col("yellow") slab(SHAFT_T) translate([SHAFT_L - 70, -SHAFT_H/2]) square([70, SHAFT_H]);
+    col("yellow") slab(SHAFT_T) difference() { translate([SHAFT_L - 70, -SHAFT_H/2]) square([70, SHAFT_H]); blade2d(); }
     // blade: yellow heel, black tape, yellow toe
     col("yellow") slab(BLADE_T) intersection() { blade2d(); translate([300, -50]) square([300, 85]); }
-    col("black")  slab(BLADE_T) intersection() { blade2d(); translate([300, 35])  rotate(-12) square([300, 115]); }
+    col("black")  slab(BLADE_T) difference() { intersection() { blade2d(); translate([300, 35])  rotate(-12) square([300, 115]); }
+                                                 translate([300, -50]) square([300, 85]); }
     col("yellow") slab(BLADE_T) difference()   { blade2d(); translate([300, -50]) square([300, 85]);
                                                  translate([300, 35]) rotate(-12) square([300, 115]); }
     // BAUER lettering, raised 1 mm, both sides
