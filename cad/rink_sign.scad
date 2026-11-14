@@ -14,7 +14,7 @@ FONT_ITAL = "Liberation Sans:style=Bold Italic";
 
 // ---------- colors ----------
 C = [["yellow",[0.98,0.86,0.10]], ["black",[0.08,0.08,0.08]], ["cream",[0.93,0.90,0.82]],
-     ["red",[0.85,0.15,0.12]], ["white",[0.97,0.97,0.97]]]];
+     ["red",[0.85,0.15,0.12]], ["white",[0.97,0.97,0.97]]];
 function rgb(n) = [for (c = C) if (c[0] == n) c[1]][0];
 module col(n) { if (part == "all") color(rgb(n)) children(); else if (part == n) children(); }
 
