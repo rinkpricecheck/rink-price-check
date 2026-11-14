@@ -5,8 +5,13 @@ Each colour becomes its own coloured part, all grouped into a single object,
 laid flat with the front facing up, so a multicolour slicer (Bambu Studio, OrcaSlicer, PrusaSlicer) loads them
 aligned and you only assign a filament to each part.
 
-usage: make_3mf.py OUT.3mf NAME colour=file.stl [colour=file.stl ...]
+usage: make_3mf.py [--bambu] OUT.3mf NAME colour=file.stl [colour=file.stl ...]
+
+--bambu writes a Bambu Studio project instead: each part is pre-assigned to
+filament 1..N with the right colour, so Bambu skips its "Simplify Colors" /
+"Filament Matching" import dialog.
 """
+import json
 import sys
 import zipfile
 
@@ -42,7 +47,11 @@ def mesh_xml(verts, faces):
 
 
 def main():
-    out, name, pairs = sys.argv[1], sys.argv[2], [a.split("=", 1) for a in sys.argv[3:]]
+    args = sys.argv[1:]
+    bambu = args[0] == "--bambu"
+    if bambu:
+        args = args[1:]
+    out, name, pairs = args[0], args[1], [a.split("=", 1) for a in args[2:]]
     meshes = [(c, *read_stl(p)) for c, p in pairs]
     # lay flat for printing: the front face (-Y in the CAD files) turns to face up (+Z)
     meshes = [(c, np.column_stack([v[:, 0], v[:, 2], -v[:, 1]]), f) for c, v, f in meshes]
@@ -50,21 +59,30 @@ def main():
     hi = np.max([m[1].max(0) for m in meshes], axis=0)
     shift = np.array([-(lo[0] + hi[0]) / 2, -(lo[1] + hi[1]) / 2, -lo[2]])   # centre, sit on the bed
 
-    mats = "".join(f'<base name="{c}" displaycolor="{COLOURS.get(c, "#808080")}FF"/>' for c, *_ in meshes)
+    n = len(meshes)
+    gid = n + 2
     objs, comps = [], []
     for i, (c, v, f) in enumerate(meshes):
         oid = i + 2
-        objs.append(f'<object id="{oid}" name="{name} - {c}" type="model" pid="1" pindex="{i}">'
-                    f'{mesh_xml(v + shift, f)}</object>')
+        mat = "" if bambu else f' pid="1" pindex="{i}"'
+        objs.append(f'<object id="{oid}" name="{name} - {c}" type="model"{mat}>{mesh_xml(v + shift, f)}</object>')
         comps.append(f'<component objectid="{oid}"/>')
-    gid = len(meshes) + 2
+    if bambu:
+        head = ('xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">'
+                '<metadata name="Application">BambuStudio-01.08.00.00</metadata>'
+                '<metadata name="BambuStudio:3mfVersion">1</metadata>')
+        mats, item = "", f'<item objectid="{gid}" transform="1 0 0 0 1 0 0 0 1 128 128 0" printable="1"/>'
+    else:
+        head = ">"
+        mats = ('<basematerials id="1">' + "".join(
+            f'<base name="{c}" displaycolor="{COLOURS.get(c, "#808080")}FF"/>' for c, *_ in meshes) + "</basematerials>")
+        item = f'<item objectid="{gid}"/>'
     model = ('<?xml version="1.0" encoding="UTF-8"?>\n'
              '<model unit="millimeter" xml:lang="en-US" '
-             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
-             f'<metadata name="Title">{name}</metadata><resources>'
-             f'<basematerials id="1">{mats}</basematerials>{"".join(objs)}'
+             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" ' + head +
+             f'<metadata name="Title">{name}</metadata><resources>{mats}{"".join(objs)}'
              f'<object id="{gid}" name="{name}" type="model"><components>{"".join(comps)}</components></object>'
-             f'</resources><build><item objectid="{gid}"/></build></model>')
+             f'</resources><build>{item}</build></model>')
     types = ('<?xml version="1.0" encoding="UTF-8"?>\n'
              '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
              '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
@@ -78,6 +96,26 @@ def main():
         z.writestr("[Content_Types].xml", types)
         z.writestr("_rels/.rels", rels)
         z.writestr("3D/3dmodel.model", model)
+        if bambu:
+            parts = "".join(
+                f'<part id="{i + 2}" subtype="normal_part"><metadata key="name" value="{c}"/>'
+                f'<metadata key="extruder" value="{i + 1}"/></part>' for i, (c, *_) in enumerate(meshes))
+            cfg = ('<?xml version="1.0" encoding="UTF-8"?>\n<config>'
+                   f'<object id="{gid}"><metadata key="name" value="{name}"/><metadata key="extruder" value="1"/>'
+                   f'{parts}</object>'
+                   '<plate><metadata key="plater_id" value="1"/><metadata key="plater_name" value=""/>'
+                   '<metadata key="locked" value="false"/><model_instance>'
+                   f'<metadata key="object_id" value="{gid}"/><metadata key="instance_id" value="0"/>'
+                   '<metadata key="identify_id" value="100"/></model_instance></plate>'
+                   f'<assemble><assemble_item object_id="{gid}" instance_id="0" '
+                   'transform="1 0 0 0 1 0 0 0 1 128 128 0" offset="0 0 0"/></assemble></config>')
+            z.writestr("Metadata/model_settings.config", cfg)
+            z.writestr("Metadata/project_settings.config", json.dumps({
+                "filament_colour": [COLOURS.get(c, "#808080") for c, *_ in meshes],
+                "filament_type": ["PLA"] * n,
+                "filament_settings_id": ["Generic PLA"] * n,
+                "version": "01.08.00.00",
+            }, indent=4))
     size = hi - lo
     print(f"{out}: {len(meshes)} parts, {size[0]:.0f} x {size[1]:.0f} x {size[2]:.0f} mm")
 
