@@ -99,7 +99,7 @@ module wolf_teeth() {
 }
 
 module wolf_sign() {
-    WX = SIGN_CX;  WY = SIGN_TOP - 150;
+    WX = SIGN_CX;  WY = SIGN_TOP - 160;
     // core
     col("yellow") slab(CORE_T) pennant(0);
     // black border layer
@@ -108,9 +108,11 @@ module wolf_sign() {
     col("cream")  face_layer(CORE_T/2 + L, L, SIGN_CX) pennant(13);
     // lettering
     col("yellow") face_layer(CORE_T/2 + 2*L, 1.5, SIGN_CX)
-        translate([SIGN_CX, SIGN_TOP - 38]) text("GOLDEN", size = 17, font = FONT, halign = "center", valign = "center");
+        translate([SIGN_CX, SIGN_TOP - 54]) text("GOLDEN", size = 15, font = FONT, halign = "center", valign = "center");
     col("black")  face_layer(CORE_T/2 + 2*L, 2, SIGN_CX)
-        translate([SIGN_CX, SIGN_TOP - 70]) text("WOLVES", size = 25, font = FONT, halign = "center", valign = "center");
+        translate([SIGN_CX, SIGN_TOP - 30]) text("305", size = 18, font = FONT, halign = "center", valign = "center");
+    col("black")  face_layer(CORE_T/2 + 2*L, 2, SIGN_CX)
+        translate([SIGN_CX, SIGN_TOP - 84]) text("WOLVES", size = 24, font = FONT, halign = "center", valign = "center");
     // wolf head: black silhouette, yellow face on top, red mouth, white teeth
     col("black")  face_layer(CORE_T/2 + 2*L, 2, SIGN_CX) translate([WX, WY]) wolf_outline();
     col("yellow") face_layer(CORE_T/2 + 3*L, 1, SIGN_CX) translate([WX, WY]) wolf_face();
