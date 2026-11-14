@@ -23,7 +23,8 @@ R    = 150;   // sunset disc radius
 CORE = 8;     // core thickness
 L    = 2;     // colour layer thickness
 EX   = 165;   // disc centre, along the bracket
-EZ   = -258;  // disc centre height (bracket shaft is at 0)
+EZ   = -270;  // disc centre height (bracket shaft is at 0)
+SLOT_W = 28;  SLOT_H = 5;  SLOT_DX = 40;  SLOT_Z = 126;   // strap slots near the top of the disc
 
 // ---------- layers ----------
 module slab(t) { translate([0, t/2, 0]) rotate([90, 0, 0]) linear_extrude(t) children(); }
@@ -127,17 +128,19 @@ module bracket() {
 }
 module bauer() { translate([135, 0]) text("BAUER", size = 19, font = FONT_ITAL, halign = "center", valign = "center"); }
 
-// straps from the shaft down to the disc
-module straps() {
-    for (dx = [-40, 40]) col("black") {
-        x = EX + dx;  z_top = EZ + sqrt(R*R - dx*dx) - 6;
-        translate([x - 11, -8, z_top]) cube([22, 16, -SHAFT_H/2 - z_top + 1]);
-        translate([x - 13, -9, -SHAFT_H/2 - 22]) cube([26, 18, 10]);
-        translate([x - 11, 0, -SHAFT_H/2 - 4]) rotate([0, 90, 0]) cylinder(d = 8, h = 22);
+// loops under the stick shaft (one per strap): a tab with a 28 x 5 mm slot the strap wraps through
+module shaft_loop(x) {
+    col("black") translate([0, 4, 0]) rotate([90, 0, 0]) linear_extrude(8) difference() {
+        translate([x, -13]) offset(r = 4) offset(delta = -4) translate([-19, -26]) square([38, 28]);
+        translate([x - 14, -33.5]) square([28, 5]);
     }
 }
 
 // ---------- model ----------
 bracket();
-straps();
-translate([EX, 0, EZ]) emblem();
+for (dx = [-SLOT_DX, SLOT_DX]) shaft_loop(EX + dx);
+// straps are real 1" (25 mm) webbing: through the loops under the shaft and the two slots in the disc
+translate([EX, 0, EZ]) difference() {
+    emblem();
+    for (dx = [-SLOT_DX, SLOT_DX]) translate([dx - SLOT_W/2, -50, SLOT_Z - SLOT_H/2]) cube([SLOT_W, 100, SLOT_H]);
+}

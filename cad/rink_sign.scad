@@ -63,6 +63,12 @@ module stick() {
 // 2. HANGING SHIELD SIGN  (GOLDEN WOLVES)
 // =====================================================================
 SIGN_CX = 140;  SIGN_TOP = -62;  SIGN_W = 170;  SIGN_H = 240;
+// yellow strip above the black border, with two slots for real 1" (25 mm) straps
+TAB_H = 18;  SLOT_W = 28;  SLOT_H = 5;  SLOT_DX = 40;
+module strap_slots() {
+    for (dx = [-SLOT_DX, SLOT_DX])
+        translate([SIGN_CX + dx - SLOT_W/2, SIGN_TOP + 7 - SLOT_H/2]) square([SLOT_W, SLOT_H]);
+}
 CORE_T = 6;  L = 2;   // core thickness, per-layer thickness
 
 module pennant(inset = 0) {
@@ -81,7 +87,10 @@ module wolf_layer(name) {
 module wolf_sign() {
     WX = SIGN_CX;  WY = SIGN_TOP - 157;
     // core
-    col("yellow") slab(CORE_T) pennant(0);
+    col("yellow") slab(CORE_T) difference() {
+        union() { pennant(0); translate([SIGN_CX - SIGN_W/2, SIGN_TOP - 1]) square([SIGN_W, TAB_H + 1]); }
+        strap_slots();
+    }
     // black border layer
     col("black")  face_layer(CORE_T/2, L, SIGN_CX) pennant(7);
     // cream panel
@@ -100,7 +109,15 @@ module wolf_sign() {
     col("white")  face_layer(CORE_T/2 + 3*L, 1, SIGN_CX) translate([WX, WY]) wolf_layer("white");
 }
 
-// clips joining stick and sign
+// loops under the stick shaft (one per strap): a tab with a 28 x 5 mm slot the strap wraps through
+module shaft_loop(x) {
+    col("black") translate([0, 4, 0]) rotate([90, 0, 0]) linear_extrude(8) difference() {
+        translate([x, -13]) offset(r = 4) offset(delta = -4) translate([-19, -26]) square([38, 28]);
+        translate([x - 14, -33.5]) square([28, 5]);
+    }
+}
+
+// (old printed clips, no longer used: real straps go through the loops and the sign slots)
 module clips() {
     for (x = [SIGN_CX - 40, SIGN_CX + 40]) col("black") {
         translate([x - 11, -8, SIGN_TOP - 6]) cube([22, 16, -SIGN_TOP - SHAFT_H/2 + 6]);
@@ -110,6 +127,6 @@ module clips() {
 }
 
 // =====================================================================
-stick();
-clips();
+stick();       // real 1" straps go through the loops under the shaft and the slots in the sign
+    for (dx = [-SLOT_DX, SLOT_DX]) shaft_loop(SIGN_CX + dx);
 wolf_sign();
