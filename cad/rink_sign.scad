@@ -1,9 +1,9 @@
-// Rink locker-room sign: hockey-stick bracket + hanging team shield + side flag
+// Rink locker-room sign: hockey-stick bracket + hanging team shield
 // Double-sided: every face detail is mirrored so the BACK reads exactly like the FRONT.
 // Units: mm.  X = along the stick, Z = up, Y = thickness (front face at -Y).
 //
 // part = "all"    -> colored preview of the whole thing
-// part = "yellow" | "black" | "cream" | "red" | "white" | "blue" | "grey"
+// part = "yellow" | "black" | "cream" | "red" | "white"
 //        -> just that color, for multicolor 3D printing (export each as STL)
 
 part = "all";
@@ -14,8 +14,7 @@ FONT_ITAL = "Liberation Sans:style=Bold Italic";
 
 // ---------- colors ----------
 C = [["yellow",[0.98,0.86,0.10]], ["black",[0.08,0.08,0.08]], ["cream",[0.93,0.90,0.82]],
-     ["red",[0.85,0.15,0.12]], ["white",[0.97,0.97,0.97]], ["blue",[0.10,0.35,0.85]],
-     ["grey",[0.62,0.64,0.68]]];
+     ["red",[0.85,0.15,0.12]], ["white",[0.97,0.97,0.97]]]];
 function rgb(n) = [for (c = C) if (c[0] == n) c[1]][0];
 module col(n) { if (part == "all") color(rgb(n)) children(); else if (part == n) children(); }
 
@@ -111,38 +110,6 @@ module clips() {
 }
 
 // =====================================================================
-// 3. SIDE FLAG (BREAKERS-style banner)  -- separate wall-mounted piece
-// =====================================================================
-FX = 560;           // flag rod starts here (its own wall plate)
-FLAG_W = 160;  FLAG_H = 230;  FLAG_T = 3;  FLAG_TOP = -70;
-FCX = FX + 25 + FLAG_W/2;  FCY = FLAG_TOP - 110;
-
-module emblem_ring()  { difference() { circle(r = 60); circle(r = 54); } }
-module wave()         { difference() { circle(r = 52); translate([14, 20]) circle(r = 22); translate([-60, -60]) square([120, 30]); } }
-module wave_curls()   { for (r = [28, 36, 44]) intersection() { circle(r = 51); difference() { translate([14, 20]) circle(r = r + 3);
-                          translate([14, 20]) circle(r = r); translate([-80, -80]) square([160, 75]); } } }
-
-module flag() {
-    col("black") {
-        translate([FX - 12, -25, FLAG_TOP - 25]) cube([12, 50, 60]);            // wall plate
-        translate([FX, 0, FLAG_TOP + 6]) rotate([0, 90, 0]) cylinder(d = 12, h = FLAG_W + 40);  // rod
-        translate([FX + 25, 0, FLAG_TOP + 6]) rotate([0, 90, 0]) cylinder(d = 18, h = FLAG_W); // sleeve
-        slab(FLAG_T) translate([FX + 25, FLAG_TOP - FLAG_H]) square([FLAG_W, FLAG_H]);         // banner
-        translate([FX + FLAG_W + 40, 0, FLAG_TOP + 6]) sphere(d = 14);           // rod end cap
-    }
-    // emblem on both sides
-    col("grey")  face_layer(FLAG_T/2, 1,   FCX) translate([FCX, FCY]) emblem_ring();
-    col("white") face_layer(FLAG_T/2, 1,   FCX) translate([FCX, FCY]) circle(r = 54);
-    col("blue")  face_layer(FLAG_T/2 + 1, 1, FCX) translate([FCX, FCY]) wave();
-    col("white") face_layer(FLAG_T/2 + 2, 0.8, FCX) translate([FCX, FCY]) wave_curls();
-    col("white") face_layer(FLAG_T/2 + 1, 1.2, FCX)
-        translate([FCX, FCY + 6]) text("PALM BEACH", size = 8, font = FONT, halign = "center", valign = "center");
-    col("grey")  face_layer(FLAG_T/2 + 1, 1.5, FCX)
-        translate([FCX, FCY - 12]) resize([150, 24]) text("BREAKERS", size = 22, font = FONT, halign = "center", valign = "center");
-}
-
-// =====================================================================
 stick();
 clips();
 wolf_sign();
-flag();
