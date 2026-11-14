@@ -72,35 +72,15 @@ module pennant(inset = 0) {
                  [0, -SIGN_H], [-SIGN_W/2, -SIGN_H + 60]]);
 }
 
-// Original stylised wolf head (front-facing, symmetric), ~100 x 95 mm
-module wolf_outline() {
-    polygon([[0, 26], [14, 30], [44, 46], [34, 14], [48, 4], [38, -2], [46, -14], [30, -16],
-             [30, -28], [18, -42], [6, -50], [-6, -50], [-18, -42], [-30, -28], [-30, -16],
-             [-46, -14], [-38, -2], [-48, 4], [-34, 14], [-44, 46], [-14, 30]]);
-}
-module wolf_face() {          // yellow fur, with dark markings cut out
-    difference() {
-        offset(delta = -4) wolf_outline();
-        // brow / forehead stripe
-        polygon([[0, 24], [6, 2], [0, -6], [-6, 2]]);
-        // eyes
-        for (s = [-1, 1]) scale([s, 1]) polygon([[8, 4], [24, 10], [20, 0]]);
-        // muzzle / nose bridge
-        polygon([[-9, -10], [9, -10], [6, -22], [-6, -22]]);
-        // mouth
-        polygon([[-14, -26], [14, -26], [8, -40], [-8, -40]]);
-        // cheek fur notches
-        for (s = [-1, 1]) scale([s, 1]) polygon([[26, -8], [36, -10], [26, -18]]);
-    }
-}
-module wolf_mouth() { offset(delta = -2) polygon([[-14, -26], [14, -26], [8, -40], [-8, -40]]); }
-module wolf_teeth() {
-    for (s = [-1, 1]) scale([s, 1]) polygon([[8, -27], [12, -27], [10, -33]]);
-    for (s = [-1, 1]) scale([s, 1]) polygon([[5, -38], [9, -38], [7, -33]]);
+// Wolf head traced from the photo of the real sign (cad/wolf/*.svg, made with potrace).
+// SVG canvas is 880 x 780 units; head centre is at (431, 379.5).  WOLF_W = finished width in mm.
+WOLF_W = 112;
+module wolf_layer(name) {
+    scale(WOLF_W / 806) translate([-431, -379.5]) import(str("wolf/wolf_", name, ".svg"));
 }
 
 module wolf_sign() {
-    WX = SIGN_CX;  WY = SIGN_TOP - 160;
+    WX = SIGN_CX;  WY = SIGN_TOP - 157;
     // core
     col("yellow") slab(CORE_T) pennant(0);
     // black border layer
@@ -115,10 +95,10 @@ module wolf_sign() {
     col("black")  face_layer(CORE_T/2 + 2*L, 2, SIGN_CX)
         translate([SIGN_CX, SIGN_TOP - 84]) text("WOLVES", size = 24, font = FONT, halign = "center", valign = "center");
     // wolf head: black silhouette, yellow face on top, red mouth, white teeth
-    col("black")  face_layer(CORE_T/2 + 2*L, 2, SIGN_CX) translate([WX, WY]) wolf_outline();
-    col("yellow") face_layer(CORE_T/2 + 3*L, 1, SIGN_CX) translate([WX, WY]) wolf_face();
-    col("red")    face_layer(CORE_T/2 + 3*L, 0.6, SIGN_CX) translate([WX, WY]) wolf_mouth();
-    col("white")  face_layer(CORE_T/2 + 3*L + 0.6, 0.6, SIGN_CX) translate([WX, WY]) wolf_teeth();
+    col("black")  face_layer(CORE_T/2 + 2*L, 2, SIGN_CX) translate([WX, WY]) wolf_layer("head");
+    col("yellow") face_layer(CORE_T/2 + 3*L, 1, SIGN_CX) translate([WX, WY]) wolf_layer("yellow");
+    col("red")    face_layer(CORE_T/2 + 3*L, 1, SIGN_CX) translate([WX, WY]) wolf_layer("red");
+    col("white")  face_layer(CORE_T/2 + 3*L, 1, SIGN_CX) translate([WX, WY]) wolf_layer("white");
 }
 
 // clips joining stick and sign
