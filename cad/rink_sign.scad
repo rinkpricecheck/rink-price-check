@@ -5,6 +5,7 @@
 // part = "all"    -> colored preview of the whole thing
 // part = "yellow" | "black" | "cream" | "red" | "white"
 //        -> just that color, for multicolor 3D printing (export each as STL)
+// half / piece -> see "split printing" near the end
 
 part = "all";
 $fn = 64;
@@ -127,6 +128,31 @@ module clips() {
 }
 
 // =====================================================================
-stick();       // real 1" straps go through the loops under the shaft and the slots in the sign
-    for (dx = [-SLOT_DX, SLOT_DX]) shaft_loop(SIGN_CX + dx);
-wolf_sign();
+
+// ---------- split printing ----------
+// half  = "full" | "front" | "back"  : cut down the middle (y = 0) so each half prints flat, detail up
+// piece = "all"  | "sign"  | "stick" : the stick bracket and the sign are separate print items
+// Alignment: 2 mm holes, 3 mm deep in each half, in an uneven pattern so the halves only fit one way.
+// Use 5.5 mm pieces of 1.75 mm filament as pins.
+half  = "full";
+piece = "all";
+PIN_D = 2.0;  PIN_DEPTH = 3;
+module pin_holes(pts) { for (p = pts) translate([p[0], 0, p[1]]) rotate([90, 0, 0]) cylinder(d = PIN_D, h = 2*PIN_DEPTH, center = true, $fn = 24); }
+module cut_half() {
+    if (half == "front")     intersection() { children(); translate([-2000, -100, -2000]) cube([4000, 100, 4000]); }
+    else if (half == "back") intersection() { children(); translate([-2000, 0, -2000]) cube([4000, 100, 4000]); }
+    else children();
+}
+
+STICK_PINS = [[60, 0], [215, 4], [375, -2]];
+SIGN_PINS  = [[SIGN_CX - 55, SIGN_TOP - 110], [SIGN_CX + 55, SIGN_TOP - 150], [SIGN_CX + 5, SIGN_TOP - 200]];
+
+// real 1" straps go through the loops under the shaft and the slots in the sign
+if (piece != "sign") cut_half() difference() {
+    union() { stick(); for (dx = [-SLOT_DX, SLOT_DX]) shaft_loop(SIGN_CX + dx); }
+    if (half != "full") pin_holes(STICK_PINS);
+}
+if (piece != "stick") cut_half() difference() {
+    wolf_sign();
+    if (half != "full") pin_holes(SIGN_PINS);
+}
