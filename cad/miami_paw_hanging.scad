@@ -1,8 +1,8 @@
 // Golden Wolves - Miami paw logo, hanging sign (standalone).
-// The traced paw logo on BOTH faces (the back reads correctly from behind), with a black
-// hanger bar behind the top of the paw. Two 1" strap slots in the bar, 80 mm apart, line up
-// with the loops under the hockey-stick bracket (miami_hanging.scad, piece = "stick").
-// Sized so each printed half fits a Bambu H2C bed in one piece.
+// The traced paw logo on BOTH faces (the back reads correctly from behind). Two 1" strap slots
+// are cut through the black between the toes, under the claws, tilted to follow the black gap;
+// the straps run up to the loops under the hockey-stick bracket (miami_hanging.scad, piece = "stick").
+// About 250 x 298 mm, so each printed half fits a Bambu H2C bed in one piece.
 //
 // part = "all" for a coloured preview, or one colour for multicolour STL export:
 //        black | yellow | white | red | gray (the claws)
@@ -19,26 +19,26 @@ C = [["black",[0.06,0.06,0.06]], ["yellow",[0.99,0.71,0.02]], ["white",[0.98,0.9
 function rgb(n) = [for (c = C) if (c[0] == n) c[1]][0];
 module col(n) { if (part == "all") color(rgb(n)) children(); else if (part == n) children(); }
 
-W    = 250;   // paw width; the whole sign is about 250 x 312 mm
+W    = 250;   // paw width; the whole sign is about 250 x 298 mm
 CORE = 8;     // black core thickness (4 mm per printed half)
 FACE = 1.2;   // colour face thickness, each side
 
 // traced at 1 px = 1 mm on a 1254 x 1254 canvas; the logo spans x 129..1121, y 53..1237 (y up)
 module art(name) { scale(W / 992) translate([-625, -645]) import(str("paw_logo/", name, ".svg")); }
 
-// hanger bar behind the top of the paw, with the strap slots
-SLOT_W = 28;  SLOT_H = 5;  SLOT_DX = 40;  SLOT_Z = 150;
-module bar2d() { offset(r = 10) offset(delta = -10) translate([-64, 118]) square([128, 45]); }
-module slots2d() { for (dx = [-SLOT_DX, SLOT_DX]) translate([dx - SLOT_W/2, SLOT_Z - SLOT_H/2]) square([SLOT_W, SLOT_H]); }
+// strap slots: in the black between the toes (checked against the traced art: 1.5 mm of black all round)
+SLOT_W = 28;  SLOT_H = 5;  SLOT_X = 29;  SLOT_Z = 92;  SLOT_A = 35;
+module slots2d() {
+    for (m = [0, 1]) mirror([m, 0]) translate([SLOT_X, SLOT_Z]) rotate(-SLOT_A)
+        offset(r = 1.5) offset(delta = -1.5) square([SLOT_W, SLOT_H], center = true);
+}
 
 // face colours: each one is cut out of the ones below it so the pieces never overlap
 module red2d()    { art("red"); }
 module gray2d()   { difference() { art("gray"); red2d(); } }
-module white2d()  { difference() { art("white"); red2d(); gray2d(); }
-                    difference() { offset(delta = -3) bar2d(); offset(delta = -4.5) bar2d(); art("outline"); } }
-module yellow2d() { difference() { art("yellow"); red2d(); gray2d(); white2d(); }
-                    difference() { bar2d(); offset(delta = -3) bar2d(); art("outline"); } }
-module all2d()    { art("outline"); bar2d(); }
+module white2d()  { difference() { art("white"); red2d(); gray2d(); } }
+module yellow2d() { difference() { art("yellow"); red2d(); gray2d(); white2d(); } }
+module all2d()    { art("outline"); }
 module black2d()  { difference() { all2d(); red2d(); gray2d(); white2d(); yellow2d(); } }
 
 module slab(t) { translate([0, t/2, 0]) rotate([90, 0, 0]) linear_extrude(t) children(); }
