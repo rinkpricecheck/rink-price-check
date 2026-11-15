@@ -1,6 +1,6 @@
 // Golden Wolves - Miami paw logo, hanging sign (standalone).
 // The traced paw logo on BOTH faces (the back reads correctly from behind). Two 1" strap slots
-// are cut horizontally through the black between the toes, just under the claws;
+// are cut horizontally just under the claws, 80 mm apart to line up with the stick loops;
 // the straps run up to the loops under the hockey-stick bracket (miami_hanging.scad, piece = "stick").
 // About 250 x 298 mm, so each printed half fits a Bambu H2C bed in one piece.
 //
@@ -26,8 +26,8 @@ FACE = 1.2;   // colour face thickness, each side
 // traced at 1 px = 1 mm on a 1254 x 1254 canvas; the logo spans x 129..1121, y 53..1237 (y up)
 module art(name) { scale(W / 992) translate([-625, -645]) import(str("paw_logo/", name, ".svg")); }
 
-// strap slots: horizontal, in the black between the toes just under the claws (checked against the traced art)
-SLOT_W = 27;  SLOT_H = 5;  SLOT_X = 30;  SLOT_Z = 95.5;  SLOT_A = 0;     // horizontal, 27 mm wide for 1" (25 mm) webbing
+// strap slots: horizontal, under the claws, 80 mm apart to line up with the stick loops (they clip the side claws)
+SLOT_W = 28;  SLOT_H = 5;  SLOT_X = 40;  SLOT_Z = 95;  SLOT_A = 0;    // horizontal, 80 mm apart like the stick loops
 module slots2d() {
     for (m = [0, 1]) mirror([m, 0]) translate([SLOT_X, SLOT_Z]) rotate(-SLOT_A)
         offset(r = 1.5) offset(delta = -1.5) square([SLOT_W, SLOT_H], center = true);
