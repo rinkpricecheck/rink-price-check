@@ -5,7 +5,7 @@
 //
 // part = "all" for a coloured preview, or one colour for multicolour STL export:
 //        black | yellow | orange | pink | red | white
-// Needs the traced wolf files in ./wolf/
+// Needs the traced wolf files in ./wolf_v2/
 //
 // Units: mm.  X = across, Z = up, Y = thickness (front face at -Y).
 
@@ -80,9 +80,9 @@ module t305()    { translate([0, 86]) text("305",    size = 20, font = FONT, hal
 module tgolden() { translate([0, 60]) text("GOLDEN", size = 18, font = FONT, halign = "center", valign = "center"); }
 module twolves() { translate([0, 28]) text("WOLVES", size = 28, font = FONT, halign = "center", valign = "center"); }
 
-WOLF_W = 140;  WOLF_Y = -64;     // traced head: 880 x 780 canvas, centre (431, 379.5), 806 wide
-module wolf(name) { translate([0, WOLF_Y]) scale(WOLF_W / 806) translate([-431, -379.5])
-                        import(str("wolf/wolf_", name, ".svg")); }
+WOLF_W = 140;  WOLF_Y = -64;     // traced from the clean logo: 2000 x 1892 canvas, centre (998, 946.5), 1940 wide
+module wolf(name) { translate([0, WOLF_Y]) scale(WOLF_W / 1940) translate([-998, -946.5])
+                        import(str("wolf_v2/wolf_", name, ".svg")); }
 
 // ---------- model ----------
 // core

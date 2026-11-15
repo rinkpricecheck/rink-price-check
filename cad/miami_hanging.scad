@@ -6,7 +6,7 @@
 // part = "all" for a coloured preview, or one colour for multicolour STL export:
 //        black | yellow | orange | pink | red | white
 // half / piece: see "split printing" near the end
-// Needs the traced wolf files in ./wolf/
+// Needs the traced wolf files in ./wolf_v2/
 //
 // Units: mm.  X = along the bracket, Z = up, Y = thickness (front face at -Y).
 
@@ -82,9 +82,9 @@ module t305()    { translate([0, 86]) text("305",    size = 20, font = FONT, hal
 module tgolden() { translate([0, 60]) text("GOLDEN", size = 18, font = FONT, halign = "center", valign = "center"); }
 module twolves() { translate([0, 28]) text("WOLVES", size = 28, font = FONT, halign = "center", valign = "center"); }
 
-WOLF_W = 140;  WOLF_Y = -64;     // traced head: 880 x 780 canvas, centre (431, 379.5), 806 wide
-module wolf(name) { translate([0, WOLF_Y]) scale(WOLF_W / 806) translate([-431, -379.5])
-                        import(str("wolf/wolf_", name, ".svg")); }
+WOLF_W = 140;  WOLF_Y = -64;     // traced from the clean logo: 2000 x 1892 canvas, centre (998, 946.5), 1940 wide
+module wolf(name) { translate([0, WOLF_Y]) scale(WOLF_W / 1940) translate([-998, -946.5])
+                        import(str("wolf_v2/wolf_", name, ".svg")); }
 
 // ---------- the hanging disc ----------
 module emblem() {
@@ -141,29 +141,41 @@ module shaft_loop(x) {
 // ---------- split printing ----------
 // half  = "full" | "front" | "back"  : cut down the middle (y = 0) so each half prints flat, detail up
 // piece = "all"  | "sign"  | "stick" : the stick bracket and the sign are separate print items
-// Alignment: 2 mm holes, 3 mm deep in each half, in an uneven pattern so the halves only fit one way.
-// Use 5.5 mm pieces of 1.75 mm filament as pins.
+// piece = "keys"                    : the printed alignment keys (print them on the front-halves plate)
+// Alignment keys: each half has three 2.5 mm deep sockets in an uneven pattern - two round, one
+// square - so the halves only fit together one way. The keys (8 mm, printed) sit in the sockets
+// and lock the halves together while the glue sets.
 half  = "full";
 piece = "all";
-PIN_D = 2.0;  PIN_DEPTH = 3;
-module pin_holes(pts) { for (p = pts) translate([p[0], 0, p[1]]) rotate([90, 0, 0]) cylinder(d = PIN_D, h = 2*PIN_DEPTH, center = true, $fn = 24); }
+KEY = 8;  KEY_CLR = 0.15;  KEY_DEPTH = 2.5;  KEY_H = 2*KEY_DEPTH - 0.4;
+module key2d(sq, d) { if (sq) square(d, center = true); else circle(d = d, $fn = 48); }
+module key_sockets(pts) {
+    for (p = pts) translate([p[0], 0, p[1]]) rotate([90, 0, 0])
+        linear_extrude(2*KEY_DEPTH, center = true) key2d(p[2], KEY + 2*KEY_CLR);
+}
+module keys() {       // 2 sets of 3 + 2 spares, lying so the front-half orientation stands them upright
+    shapes = [0, 0, 1, 0, 0, 1, 0, 1];
+    col("black") for (i = [0 : len(shapes) - 1])
+        translate([i*14, 0, 0]) rotate([90, 0, 0]) linear_extrude(KEY_H) key2d(shapes[i], KEY);
+}
 module cut_half() {
     if (half == "front")     intersection() { children(); translate([-2000, -100, -2000]) cube([4000, 100, 4000]); }
     else if (half == "back") intersection() { children(); translate([-2000, 0, -2000]) cube([4000, 100, 4000]); }
     else children();
 }
 
-STICK_PINS = [[60, 0], [215, 4], [375, -2]];
-DISC_PINS  = [[-100, 40], [100, 62], [0, 112]];      // relative to the disc centre, on the solid sun area
+STICK_KEYS = [[60, 0, 0], [215, 2, 1], [372, -2, 0]];            // [x, z, square?]
+DISC_KEYS  = [[-100, 40, 0], [100, 62, 1], [0, 110, 0]];          // relative to the disc centre, on the solid sun
 
 // ---------- model ----------
 // straps are real 1" (25 mm) webbing: through the loops under the shaft and the two slots in the disc
-if (piece != "sign") cut_half() difference() {
+if (piece == "keys") keys();
+if (piece == "all" || piece == "stick") cut_half() difference() {
     union() { bracket(); for (dx = [-SLOT_DX, SLOT_DX]) shaft_loop(EX + dx); }
-    if (half != "full") pin_holes(STICK_PINS);
+    if (half != "full") key_sockets(STICK_KEYS);
 }
-if (piece != "stick") cut_half() translate([EX, 0, EZ]) difference() {
+if (piece == "all" || piece == "sign") cut_half() translate([EX, 0, EZ]) difference() {
     emblem();
     for (dx = [-SLOT_DX, SLOT_DX]) translate([dx - SLOT_W/2, -50, SLOT_Z - SLOT_H/2]) cube([SLOT_W, 100, SLOT_H]);
-    if (half != "full") pin_holes(DISC_PINS);
+    if (half != "full") key_sockets(DISC_KEYS);
 }

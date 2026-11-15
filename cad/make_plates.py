@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a two-plate Bambu Studio project from split per-colour STLs.
 
-Plate 1: front half of the sign + front half of the stick bracket
+Plate 1: front half of the sign + front half of the stick bracket (+ alignment keys)
 Plate 2: back half of the sign  + back half of the stick bracket
 Each half is laid with its cut face on the bed and its detail facing up, and
 every colour part is pre-assigned to its own filament slot.
@@ -33,7 +33,7 @@ def main():
     out, name, colours, d = sys.argv[1], sys.argv[2], sys.argv[3].split(","), sys.argv[4]
     objects, nid = [], 1          # (plate, label, [(colour, verts, faces)], size)
     for p, half in enumerate(["front", "back"]):
-        for piece in ["sign", "stick"]:
+        for piece in ["sign", "stick", "keys"]:
             parts = []
             for c in colours:
                 f = os.path.join(d, f"{half}_{piece}_{c}.stl")
@@ -50,6 +50,7 @@ def main():
 
     res, items, cfg_objs, plates, assemble = [], [], [], {}, []
     ident = 100
+    cur_plate, y, prev_h = None, 0.0, None
     for p, label, parts, size in objects:
         comps, cfg_parts = [], []
         for c, v, tri in parts:
@@ -61,9 +62,12 @@ def main():
         nid += 1
         gid = nid
         res.append(f'<object id="{gid}" name="{label}" type="model"><components>{"".join(comps)}</components></object>')
-        # sign in the middle of the plate, stick just below it (press Arrange in Bambu to repack)
-        same = [o for o in objects if o[0] == p]
-        y = BED / 2 if "sign" in label else BED / 2 - (same[0][3][1] / 2 + size[1] / 2 + 10)
+        # stack the plate's items top to bottom from the middle (press Arrange in Bambu to repack)
+        if p != cur_plate:
+            cur_plate, y, prev_h = p, BED / 2, None
+        else:
+            y -= prev_h / 2 + size[1] / 2 + 10
+        prev_h = size[1]
         tf = f"1 0 0 0 1 0 0 0 1 {p * STRIDE + BED / 2:.3f} {y:.3f} 0"
         items.append(f'<item objectid="{gid}" transform="{tf}" printable="1"/>')
         cfg_objs.append(f'<object id="{gid}"><metadata key="name" value="{label}"/>'
