@@ -21,7 +21,7 @@ import numpy as np
 
 COLOURS = {
     "black": "#141414", "yellow": "#FADB1A", "cream": "#EDE6D1", "red": "#D9261F",
-    "white": "#F7F7F7", "orange": "#F78C1F", "pink": "#F26B8C",
+    "white": "#F7F7F7", "orange": "#F78C1F", "pink": "#F26B8C", "gray": "#C9CBD3",
 }
 
 

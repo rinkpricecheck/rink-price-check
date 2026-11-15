@@ -20,7 +20,7 @@ import numpy as np
 
 from make_3mf import COLOURS, mesh_xml, read_stl, spec
 
-BED = 256.0                     # Bambu X1 / P1 / P2S bed; plates sit side by side
+BED = float(os.environ.get("BED", 256))   # bed width; plates sit side by side (BED=350 for the H2C / H2D)
 STRIDE = BED * 1.2              # Bambu leaves a 1/5 bed gap between plates
 
 
