@@ -1,10 +1,10 @@
-// 305 Golden Wolves - Miami hanging sign (standalone).
-// Striped sunset disc framed by twin palm trees, "305 GOLDEN WOLVES" and the wolf
+// Golden Wolves - Miami hanging sign (standalone).
+// Striped sunset disc framed by twin palm trees, "Miami GOLDEN WOLVES" and the wolf
 // head directly on the sunset (no shield border), hanging from a hockey-stick wall bracket.
 // Double-sided: the back looks exactly like the front.
 //
 // part = "all" for a coloured preview, or one colour for multicolour STL export:
-//        black | yellow | orange | pink | red | white
+//        black | yellow | orange | pink | red | white | miami (the Miami lettering)
 // half / piece: see "split printing" near the end
 // Needs the traced wolf files in ./wolf_v2/
 //
@@ -16,7 +16,8 @@ FONT      = "Liberation Sans:style=Bold";
 FONT_ITAL = "Liberation Sans:style=Bold Italic";
 
 C = [["black",[0.08,0.08,0.08]], ["yellow",[0.98,0.86,0.10]], ["orange",[0.97,0.55,0.12]],
-     ["pink",[0.95,0.42,0.55]], ["red",[0.85,0.15,0.12]], ["white",[0.97,0.97,0.97]]];
+     ["pink",[0.95,0.42,0.55]], ["red",[0.85,0.15,0.12]], ["white",[0.97,0.97,0.97]],
+     ["miami",[0.08,0.08,0.08]]];   // "miami" = the Miami lettering, black, exported as its own part
 function rgb(n) = [for (c = C) if (c[0] == n) c[1]][0];
 module col(n) { if (part == "all") color(rgb(n)) children(); else if (part == n) children(); }
 
@@ -78,7 +79,7 @@ module stripe2d(i) { intersection() { circle(r = R - 9); translate([-R, -10 - i*
 module keep_clear() { offset(delta = 4) twin() palm2d(); }
 
 // ---------- lettering + wolf ----------
-module t305()    { translate([0, 86]) text("305",    size = 20, font = FONT, halign = "center", valign = "center"); }
+module tmiami()  { translate([0, 86]) text("Miami",  size = 20, font = FONT, halign = "center", valign = "center"); }
 module tgolden() { translate([0, 60]) text("GOLDEN", size = 18, font = FONT, halign = "center", valign = "center"); }
 module twolves() { translate([0, 28]) text("WOLVES", size = 28, font = FONT, halign = "center", valign = "center"); }
 
@@ -95,7 +96,8 @@ module emblem() {
     col("orange") lay(CORE/2, L) twin() trunk_rings();
     col("pink")   lay(CORE/2, L) twin() leaf_ribs();
     // layer 2: black lettering, outline behind GOLDEN, wolf silhouette with yellow outline
-    col("black")  lay(CORE/2 + L, L) { t305(); twolves(); offset(r = 2.5) tgolden(); wolf("head"); }
+    col("black")  lay(CORE/2 + L, L) { twolves(); offset(r = 2.5) tgolden(); wolf("head"); }
+    col("miami")  lay(CORE/2 + L, L) tmiami();      // its own part so Bambu lists it separately
     col("yellow") lay(CORE/2 + L, L) difference() { offset(r = 3.5) wolf("head"); wolf("head"); }
     // layer 3: GOLDEN fill and wolf colours
     col("yellow") lay(CORE/2 + 2*L, 1) { tgolden(); wolf("yellow"); }

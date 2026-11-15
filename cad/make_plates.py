@@ -7,7 +7,9 @@ Each half is laid with its cut face on the bed and its detail facing up, and
 every colour part is pre-assigned to its own filament slot.
 
 usage: make_plates.py OUT.3mf NAME colour1,colour2,... STL_DIR
-       STL_DIR holds {front,back}_{sign,stick}_{colour}.stl (missing ones are skipped)
+       STL_DIR holds {front,back}_{sign,stick,keys}_{colour}.stl (missing ones are skipped)
+       a colour can be label@colour (e.g. miami@black): read from ..._miami.stl, its own
+       part named MIAMI on the black filament
 """
 import json
 import os
@@ -16,7 +18,7 @@ import zipfile
 
 import numpy as np
 
-from make_3mf import COLOURS, mesh_xml, read_stl
+from make_3mf import COLOURS, mesh_xml, read_stl, spec
 
 BED = 256.0                     # Bambu X1 / P1 / P2S bed; plates sit side by side
 STRIDE = BED * 1.2              # Bambu leaves a 1/5 bed gap between plates
@@ -31,12 +33,13 @@ def lay_flat(v, half):
 
 def main():
     out, name, colours, d = sys.argv[1], sys.argv[2], sys.argv[3].split(","), sys.argv[4]
+    fil = list(dict.fromkeys(spec(c)[1] for c in colours))
     objects, nid = [], 1          # (plate, label, [(colour, verts, faces)], size)
     for p, half in enumerate(["front", "back"]):
         for piece in ["sign", "stick", "keys"]:
             parts = []
             for c in colours:
-                f = os.path.join(d, f"{half}_{piece}_{c}.stl")
+                f = os.path.join(d, f"{half}_{piece}_{c.split('@')[0]}.stl")
                 if os.path.exists(f) and os.path.getsize(f) > 200:
                     v, tri = read_stl(f)
                     parts.append((c, lay_flat(v, half), tri))
@@ -55,10 +58,10 @@ def main():
         comps, cfg_parts = [], []
         for c, v, tri in parts:
             nid += 1
-            res.append(f'<object id="{nid}" name="{label} - {c}" type="model">{mesh_xml(v, tri)}</object>')
+            res.append(f'<object id="{nid}" name="{label} - {spec(c)[0]}" type="model">{mesh_xml(v, tri)}</object>')
             comps.append(f'<component objectid="{nid}"/>')
-            cfg_parts.append(f'<part id="{nid}" subtype="normal_part"><metadata key="name" value="{c}"/>'
-                             f'<metadata key="extruder" value="{colours.index(c) + 1}"/></part>')
+            cfg_parts.append(f'<part id="{nid}" subtype="normal_part"><metadata key="name" value="{spec(c)[0]}"/>'
+                             f'<metadata key="extruder" value="{fil.index(spec(c)[1]) + 1}"/></part>')
         nid += 1
         gid = nid
         res.append(f'<object id="{gid}" name="{label}" type="model"><components>{"".join(comps)}</components></object>')
@@ -107,9 +110,9 @@ def main():
         z.writestr("3D/3dmodel.model", model)
         z.writestr("Metadata/model_settings.config", cfg)
         z.writestr("Metadata/project_settings.config", json.dumps({
-            "filament_colour": [COLOURS[c] for c in colours],
-            "filament_type": ["PLA"] * len(colours),
-            "filament_settings_id": ["Generic PLA"] * len(colours),
+            "filament_colour": [COLOURS[c] for c in fil],
+            "filament_type": ["PLA"] * len(fil),
+            "filament_settings_id": ["Generic PLA"] * len(fil),
             "version": "01.08.00.00",
         }, indent=4))
     print(f"{out}: {len(objects)} items on {len(plates)} plates")

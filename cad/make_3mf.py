@@ -6,6 +6,8 @@ laid flat with the front facing up, so a multicolour slicer (Bambu Studio, OrcaS
 aligned and you only assign a filament to each part.
 
 usage: make_3mf.py [--bambu] OUT.3mf NAME colour=file.stl [colour=file.stl ...]
+       a part can be written label@colour=file.stl to make it its own named part
+       (e.g. miami@black=... shows up as "MIAMI" on the black filament)
 
 --bambu writes a Bambu Studio project instead: each part is pre-assigned to
 filament 1..N with the right colour, so Bambu skips its "Simplify Colors" /
@@ -21,6 +23,12 @@ COLOURS = {
     "black": "#141414", "yellow": "#FADB1A", "cream": "#EDE6D1", "red": "#D9261F",
     "white": "#F7F7F7", "orange": "#F78C1F", "pink": "#F26B8C",
 }
+
+
+def spec(s):
+    """'label@colour' -> (part name, filament colour); a plain colour is both."""
+    label, _, colour = s.partition("@")
+    return (label.upper(), colour) if colour else (s, s)
 
 
 def read_stl(path):
@@ -53,6 +61,7 @@ def main():
         args = args[1:]
     out, name, pairs = args[0], args[1], [a.split("=", 1) for a in args[2:]]
     meshes = [(c, *read_stl(p)) for c, p in pairs]
+    fil = list(dict.fromkeys(spec(c)[1] for c, *_ in meshes))           # filament slots, in order
     # lay flat for printing: the front face (-Y in the CAD files) turns to face up (+Z)
     meshes = [(c, np.column_stack([v[:, 0], v[:, 2], -v[:, 1]]), f) for c, v, f in meshes]
     lo = np.min([m[1].min(0) for m in meshes], axis=0)
@@ -65,7 +74,7 @@ def main():
     for i, (c, v, f) in enumerate(meshes):
         oid = i + 2
         mat = "" if bambu else f' pid="1" pindex="{i}"'
-        objs.append(f'<object id="{oid}" name="{name} - {c}" type="model"{mat}>{mesh_xml(v + shift, f)}</object>')
+        objs.append(f'<object id="{oid}" name="{name} - {spec(c)[0]}" type="model"{mat}>{mesh_xml(v + shift, f)}</object>')
         comps.append(f'<component objectid="{oid}"/>')
     if bambu:
         head = ('xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">'
@@ -75,7 +84,7 @@ def main():
     else:
         head = ">"
         mats = ('<basematerials id="1">' + "".join(
-            f'<base name="{c}" displaycolor="{COLOURS.get(c, "#808080")}FF"/>' for c, *_ in meshes) + "</basematerials>")
+            f'<base name="{spec(c)[0]}" displaycolor="{COLOURS.get(spec(c)[1], "#808080")}FF"/>' for c, *_ in meshes) + "</basematerials>")
         item = f'<item objectid="{gid}"/>'
     model = ('<?xml version="1.0" encoding="UTF-8"?>\n'
              '<model unit="millimeter" xml:lang="en-US" '
@@ -98,8 +107,8 @@ def main():
         z.writestr("3D/3dmodel.model", model)
         if bambu:
             parts = "".join(
-                f'<part id="{i + 2}" subtype="normal_part"><metadata key="name" value="{c}"/>'
-                f'<metadata key="extruder" value="{i + 1}"/></part>' for i, (c, *_) in enumerate(meshes))
+                f'<part id="{i + 2}" subtype="normal_part"><metadata key="name" value="{spec(c)[0]}"/>'
+                f'<metadata key="extruder" value="{fil.index(spec(c)[1]) + 1}"/></part>' for i, (c, *_) in enumerate(meshes))
             cfg = ('<?xml version="1.0" encoding="UTF-8"?>\n<config>'
                    f'<object id="{gid}"><metadata key="name" value="{name}"/><metadata key="extruder" value="1"/>'
                    f'{parts}</object>'
@@ -111,9 +120,9 @@ def main():
                    'transform="1 0 0 0 1 0 0 0 1 128 128 0" offset="0 0 0"/></assemble></config>')
             z.writestr("Metadata/model_settings.config", cfg)
             z.writestr("Metadata/project_settings.config", json.dumps({
-                "filament_colour": [COLOURS.get(c, "#808080") for c, *_ in meshes],
-                "filament_type": ["PLA"] * n,
-                "filament_settings_id": ["Generic PLA"] * n,
+                "filament_colour": [COLOURS.get(c, "#808080") for c in fil],
+                "filament_type": ["PLA"] * len(fil),
+                "filament_settings_id": ["Generic PLA"] * len(fil),
                 "version": "01.08.00.00",
             }, indent=4))
     size = hi - lo
