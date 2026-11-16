@@ -28,11 +28,15 @@ module art(name) { scale(W / 992) translate([-625, -645]) import(str("paw_logo/"
 module slab(t) { translate([0, t/2, 0]) rotate([90, 0, 0]) linear_extrude(t) children(); }
 module face()  { translate([0, -CORE/2, 0]) rotate([90, 0, 0]) linear_extrude(FACE) children(); }
 
-// each colour is cut out of the ones below it so the face pieces never overlap; black fills any gap
-module red2d()    { art("red"); }
-module gray2d()   { difference() { art("gray"); red2d(); } }
-module white2d()  { difference() { art("white"); red2d(); gray2d(); } }
-module yellow2d() { difference() { art("yellow"); red2d(); gray2d(); white2d(); } }
+// The traced colours tile the logo with no gaps; each is also grown by GROW so the curve fitting
+// can't open hairline seams (they'd fill with black and print as black specks along the edges).
+// Overlaps go to the higher colour: red, gray, white, yellow, then black takes what is left.
+GROW = 0.15;
+module c2d(n)     { intersection() { offset(delta = GROW) art(n); art("outline"); } }
+module red2d()    { c2d("red"); }
+module gray2d()   { difference() { c2d("gray"); red2d(); } }
+module white2d()  { difference() { c2d("white"); red2d(); gray2d(); } }
+module yellow2d() { difference() { c2d("yellow"); red2d(); gray2d(); white2d(); } }
 module black2d()  { difference() { art("outline"); red2d(); gray2d(); white2d(); yellow2d(); } }
 
 col("black") difference() {

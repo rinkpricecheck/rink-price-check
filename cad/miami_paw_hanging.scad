@@ -33,11 +33,15 @@ module slots2d() {
         offset(r = 1.5) offset(delta = -1.5) square([SLOT_W, SLOT_H], center = true);
 }
 
-// face colours: each one is cut out of the ones below it so the pieces never overlap
-module red2d()    { art("red"); }
-module gray2d()   { difference() { art("gray"); red2d(); } }
-module white2d()  { difference() { art("white"); red2d(); gray2d(); } }
-module yellow2d() { difference() { art("yellow"); red2d(); gray2d(); white2d(); } }
+// The traced colours tile the logo with no gaps; each is also grown by GROW so the curve fitting
+// can't open hairline seams (they'd fill with black and print as black specks along the edges).
+// Overlaps go to the higher colour: red, gray, white, yellow, then black takes what is left.
+GROW = 0.15;
+module c2d(n)     { intersection() { offset(delta = GROW) art(n); art("outline"); } }
+module red2d()    { c2d("red"); }
+module gray2d()   { difference() { c2d("gray"); red2d(); } }
+module white2d()  { difference() { c2d("white"); red2d(); gray2d(); } }
+module yellow2d() { difference() { c2d("yellow"); red2d(); gray2d(); white2d(); } }
 module all2d()    { art("outline"); }
 module black2d()  { difference() { all2d(); red2d(); gray2d(); white2d(); yellow2d(); } }
 
